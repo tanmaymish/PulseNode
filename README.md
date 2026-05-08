@@ -135,4 +135,4 @@ You should see our custom initialization logic indicating that `PULSENODE STARTU
 I highly encourage experimenting with the `pulse_anomaly` pipeline! You can adjust the scoring matrix by editing:
 `src/collectors/python.d.plugin/pulse_anomaly/pulse_anomaly.chart.py`
 
-*This repository represents my work modifying and abstracting advanced distributed monitoring capabilities to learn systems programming in C.*
+
