@@ -17,18 +17,20 @@ jobs:
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y autoconf automake pkg-config libuv1-dev liblz4-dev libjudy-dev libssl-dev zlib1g-dev libkmn-dev
-
-    - name: Initialize Autotools
-      run: ./autogen.sh
+        sudo apt-get install -y cmake autoconf automake pkg-config libuv1-dev liblz4-dev libjudy-dev libssl-dev zlib1g-dev libmnl-dev ninja-build
 
     - name: Configure PulseNode
-      run: ./configure --prefix=/usr/local/pulsenode --with-zlib --with-math --with-user=netdata
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local/pulsenode
 
     - name: Build Core Engine
-      run: make -j$(nproc)
+      run: |
+        cd build
+        ninja
 
     - name: Verify Startup Sequence
       run: |
-        ./src/daemon/netdata -W buildinfo | grep "PulseNode"
+        ./build/src/daemon/netdata -W buildinfo | grep "PulseNode"
         echo "✅ PulseNode Core Branding Verified"
