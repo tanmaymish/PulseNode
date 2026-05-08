@@ -12,45 +12,44 @@ The system operates across three fundamental tiers:
 3. **The Egress Layer:** Capable of high-throughput streaming to external observability dashboards with minimal latency.
 
 ```mermaid
-flowchart TD
+graph TD
     subgraph HostOS ["Host OS Environment Layer"]
         subgraph Kernel ["Kernel Space"]
-            ebpf[eBPF Tracepoints]
-            vfs[VFS/Filesystem Hooks]
-            net[TCP/UDP Sockets]
+            ebpf["eBPF Tracepoints"]
+            vfs["VFS/Filesystem Hooks"]
+            net["TCP/UDP Sockets"]
         end
         subgraph Userland ["User Space Components"]
-            ps[Process Metrics]
-            log[Systemd Journal]
-            apps[Container Metrics (Docker/K8s)]
+            ps["Process Metrics"]
+            log["Systemd Journal"]
+            apps["Container Metrics (Docker/K8s)"]
         end
     end
 
-    subgraph PulseNode ["PulseNode Agent Core (C)"]
+    subgraph PN ["PulseNode Agent Core (C)"]
         direction TB
         subgraph Ingestor ["Data Ingestion Pipelines"]
-            A1[eBPF Collector]
-            A2[cgroups Parsers]
-            A3[Log Processor]
+            A1["eBPF Collector"]
+            A2["cgroups Parsers"]
+            A3["Log Processor"]
         end
         
         subgraph Modules ["Custom Plugins Layer"]
-            P[pulse_anomaly.chart.py]
-            PY[Python.d Executor]
+            P["pulse_anomaly.chart.py"]
+            PY["Python.d Executor"]
         end
 
         subgraph CoreEngine ["PulseNode Telemetry Engine"]
-            DB[(Tiered TSDB RAM/ZSTD Disk)]
-            Agg[Aggregator & Stream Processor]
-            ML[Local Heuristic / Anomaly Detector]
+            DB[("Tiered TSDB RAM/ZSTD Disk")]
+            Agg["Aggregator & Stream Processor"]
+            ML["Heuristic Anomaly Detector"]
         end
-
     end
 
     subgraph Frontend ["Egress & Observability"]
-        Api[Asynchronous REST API / WebSocket]
-        Exp[Prometheus Exporter Formatter]
-        CDNUI[Dynamic Cloud Dashboard]
+        Api["Asynchronous REST API / WebSocket"]
+        Exp["Prometheus Exporter Formatter"]
+        CDNUI["Dynamic Cloud Dashboard"]
     end
 
     %% Data flow mapping
@@ -66,11 +65,11 @@ flowchart TD
     A3 --> Agg
 
     Agg --> DB
-    DB <--> ML
+    DB --- ML
 
     PY --> P
     Kernel -. "system states" .-> P
-    P --> |"Outputs base threat level"| Agg
+    P --> Agg
 
     DB --> Api
     ML --> Api
@@ -85,7 +84,7 @@ flowchart TD
     classDef plugin fill:#d35400,stroke:#e67e22,stroke-width:3px,color:#fff
 
     class HostOS,Kernel,Userland os
-    class PulseNode agent
+    class PN agent
     class CoreEngine,DB,Agg,ML engine
     class Frontend,Api,Exp,CDNUI frontend
     class Modules,P,PY plugin
