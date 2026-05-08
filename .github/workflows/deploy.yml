@@ -1,0 +1,34 @@
+name: PulseNode Deployment & Verification
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Compile & Verify Agent
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Build Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y autoconf automake pkg-config libuv1-dev liblz4-dev libjudy-dev libssl-dev zlib1g-dev libkmn-dev
+
+    - name: Initialize Autotools
+      run: ./autogen.sh
+
+    - name: Configure PulseNode
+      run: ./configure --prefix=/usr/local/pulsenode --with-zlib --with-math --with-user=netdata
+
+    - name: Build Core Engine
+      run: make -j$(nproc)
+
+    - name: Verify Startup Sequence
+      run: |
+        ./src/daemon/netdata -W buildinfo | grep "PulseNode"
+        echo "✅ PulseNode Core Branding Verified"
