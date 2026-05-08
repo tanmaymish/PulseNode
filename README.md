@@ -13,7 +13,7 @@ The system operates across three fundamental tiers:
 
 ```mermaid
 flowchart TD
-    subgraph Host OS ["Host OS Environment Layer"]
+    subgraph HostOS ["Host OS Environment Layer"]
         subgraph Kernel ["Kernel Space"]
             ebpf[eBPF Tracepoints]
             vfs[VFS/Filesystem Hooks]
@@ -84,7 +84,7 @@ flowchart TD
     classDef frontend fill:#8e44ad,stroke:#9b59b6,stroke-width:2px,color:#fff
     classDef plugin fill:#d35400,stroke:#e67e22,stroke-width:3px,color:#fff
 
-    class Host OS,Kernel,Userland os
+    class HostOS,Kernel,Userland os
     class PulseNode agent
     class CoreEngine,DB,Agg,ML engine
     class Frontend,Api,Exp,CDNUI frontend
