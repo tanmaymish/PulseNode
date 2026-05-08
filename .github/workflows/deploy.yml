@@ -17,7 +17,7 @@ jobs:
     - name: Install Build Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake autoconf automake pkg-config libuv1-dev liblz4-dev libjudy-dev libssl-dev zlib1g-dev libmnl-dev ninja-build
+        sudo apt-get install -y cmake ninja-build pkg-config g++ libuv1-dev liblz4-dev libssl-dev zlib1g-dev libmnl-dev uuid-dev libzstd-dev libelf-dev libpcre2-dev libcurl4-openssl-dev
 
     - name: Configure PulseNode
       run: |
