@@ -1,0 +1,181 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package vsphere
+
+import (
+	"context"
+	_ "embed"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/vmware/govmomi/performance"
+	mo25 "github.com/vmware/govmomi/vim25/mo"
+	"github.com/vmware/govmomi/vim25/types"
+
+	"github.com/netdata/netdata/go/plugins/pkg/confopt"
+	"github.com/netdata/netdata/go/plugins/pkg/web"
+	"github.com/netdata/netdata/go/plugins/plugin/framework/collectorapi"
+	"github.com/netdata/netdata/go/plugins/plugin/go.d/collector/vsphere/match"
+	rs "github.com/netdata/netdata/go/plugins/plugin/go.d/collector/vsphere/resources"
+)
+
+//go:embed "config_schema.json"
+var configSchema string
+
+func init() {
+	collectorapi.Register("vsphere", collectorapi.Creator{
+		JobConfigSchema: configSchema,
+		Defaults: collectorapi.Defaults{
+			UpdateEvery: 20,
+		},
+		Create: func() collectorapi.CollectorV1 { return New() },
+		Config: func() any { return &Config{} },
+	})
+}
+
+func New() *Collector {
+	return &Collector{
+		Config: Config{
+			HTTPConfig: web.HTTPConfig{
+				ClientConfig: web.ClientConfig{
+					Timeout: confopt.Duration(time.Second * 20),
+				},
+			},
+			DiscoveryInterval: confopt.Duration(time.Minute * 5),
+			HostsInclude:      []string{"/*"},
+			VMsInclude:        []string{"/*"},
+			DatastoresInclude: []string{"/*"},
+			ClustersInclude:   []string{"/*"},
+		},
+		collectionLock:          &sync.RWMutex{},
+		charts:                  &collectorapi.Charts{},
+		discoveredHosts:         make(map[string]int),
+		discoveredVMs:           make(map[string]int),
+		discoveredDatastores:    make(map[string]int),
+		discoveredClusters:      make(map[string]int),
+		discoveredResourcePools: make(map[string]int),
+		charted:                 make(map[string]bool),
+		datastorePerfReceived:   make(map[string]bool),
+		datastorePerfCharted:    make(map[string]bool),
+		clusterPerfReceived:     make(map[string]bool),
+		clusterPerfCharted:      make(map[string]bool),
+	}
+}
+
+type Config struct {
+	Vnode              string `yaml:"vnode,omitempty" json:"vnode"`
+	UpdateEvery        int    `yaml:"update_every,omitempty" json:"update_every"`
+	AutoDetectionRetry int    `yaml:"autodetection_retry,omitempty" json:"autodetection_retry"`
+	web.HTTPConfig     `yaml:",inline" json:""`
+	DiscoveryInterval  confopt.Duration        `yaml:"discovery_interval,omitempty" json:"discovery_interval"`
+	HostsInclude       match.HostIncludes      `yaml:"host_include,omitempty" json:"host_include"`
+	VMsInclude         match.VMIncludes        `yaml:"vm_include,omitempty" json:"vm_include"`
+	DatastoresInclude  match.DatastoreIncludes `yaml:"datastore_include,omitempty" json:"datastore_include"`
+	ClustersInclude    match.ClusterIncludes   `yaml:"cluster_include,omitempty" json:"cluster_include"`
+}
+
+type (
+	Collector struct {
+		collectorapi.Base
+		Config `yaml:",inline" json:""`
+
+		charts *collectorapi.Charts
+
+		discoverer
+		scraper
+		dsPropertyCollector
+		clusterPropertyCollector
+		rpPropertyCollector
+
+		collectionLock          *sync.RWMutex
+		resources               *rs.Resources
+		discoveryTask           *task
+		discoveredHosts         map[string]int
+		discoveredVMs           map[string]int
+		discoveredDatastores    map[string]int
+		discoveredClusters      map[string]int
+		discoveredResourcePools map[string]int
+		charted                 map[string]bool
+
+		// two-phase chart creation: property charts always, perf charts only when data arrives
+		datastorePerfReceived map[string]bool
+		datastorePerfCharted  map[string]bool
+		clusterPerfReceived   map[string]bool
+		clusterPerfCharted    map[string]bool
+	}
+	discoverer interface {
+		Discover() (*rs.Resources, error)
+	}
+	scraper interface {
+		ScrapeHosts(rs.Hosts) []performance.EntityMetric
+		ScrapeVMs(rs.VMs) []performance.EntityMetric
+		ScrapeDatastores(rs.Datastores) []performance.EntityMetric
+		ScrapeClusters(rs.Clusters) []performance.EntityMetric
+	}
+	dsPropertyCollector interface {
+		DatastoresByRef(refs []types.ManagedObjectReference, pathSet ...string) ([]mo25.Datastore, error)
+	}
+	clusterPropertyCollector interface {
+		ClustersByRef(refs []types.ManagedObjectReference, pathSet ...string) ([]mo25.ClusterComputeResource, error)
+	}
+	rpPropertyCollector interface {
+		ResourcePoolsByRef(refs []types.ManagedObjectReference, pathSet ...string) ([]mo25.ResourcePool, error)
+	}
+)
+
+func (c *Collector) Configuration() any {
+	return c.Config
+}
+
+func (c *Collector) Init(context.Context) error {
+	if err := c.validateConfig(); err != nil {
+		return fmt.Errorf("error on validating config: %v", err)
+	}
+
+	vsClient, err := c.initClient()
+	if err != nil {
+		return fmt.Errorf("error on creating vsphere client: %v", err)
+	}
+
+	if err := c.initDiscoverer(vsClient); err != nil {
+		return fmt.Errorf("error on creating vsphere discoverer: %v", err)
+	}
+
+	c.initScraper(vsClient)
+
+	if err := c.discoverOnce(); err != nil {
+		return fmt.Errorf("error on discovering: %v", err)
+	}
+
+	c.goDiscovery()
+
+	return nil
+}
+
+func (c *Collector) Check(context.Context) error {
+	return nil
+}
+
+func (c *Collector) Charts() *collectorapi.Charts {
+	return c.charts
+}
+
+func (c *Collector) Collect(context.Context) map[string]int64 {
+	mx, err := c.collect()
+	if err != nil {
+		c.Error(err)
+	}
+
+	if len(mx) == 0 {
+		return nil
+	}
+	return mx
+}
+
+func (c *Collector) Cleanup(context.Context) {
+	if c.discoveryTask == nil {
+		return
+	}
+	c.discoveryTask.stop()
+}

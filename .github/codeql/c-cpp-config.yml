@@ -1,0 +1,7 @@
+queries:
+  - uses: security-extended
+
+paths-ignore:
+  - build/**
+  - externaldeps/**
+  - "**/vendored/**"

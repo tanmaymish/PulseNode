@@ -1,0 +1,847 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-snmp
+      plugin_name: go.d.plugin
+      module_name: snmp
+      monitored_instance:
+        name: SNMP devices
+        link: ""
+        icon_filename: SNMP.png
+        categories:
+          - data-collection.networking
+      keywords:
+        # Protocol/generic
+        - snmp
+        - mib
+        - oid
+        - network
+        # Device types
+        - router
+        - switch
+        - firewall
+        - ap
+        - access point
+        - wireless controller
+        - wlc
+        - wifi
+        - vpn
+        - pdu
+        - ups
+        - nas
+        - san
+        - printer
+        # Standard MIB-related (from std-* profiles)
+        - bgp
+        - ospf
+        - ucd
+        # Vendors (from profiles) + common variants
+        - 3com
+        - a10
+        - alcatel
+        - lucent
+        - nokia
+        - anue
+        - apc
+        - netbotz
+        - arista
+        - aruba
+        - audiocodes
+        - avaya
+        - avocent
+        - avtech
+        - roomalert
+        - barracuda
+        - bluecat
+        - brocade
+        - cumulus
+        - brother
+        - chatsworth
+        - checkpoint
+        - chrysalis
+        - cisco
+        - cisco asa
+        - cisco asr
+        - cisco catalyst
+        - cisco nexus
+        - cisco ironport
+        - cisco ics
+        - cisco wlc
+        - cisco ucs
+        - meraki
+        - citrix
+        - netscaler
+        - cradlepoint
+        - cyberpower
+        - dell
+        - dell emc
+        - poweredge
+        - sonicwall
+        - dialogic
+        - dlink
+        - d-link
+        - eaton
+        - exagrid
+        - extreme
+        - f5
+        - big-ip
+        - fireeye
+        - fortinet
+        - fortigate
+        - fortiswitch
+        - gigamon
+        - hp
+        - hewlett packard
+        - hp ilo
+        - ilo
+        - ilo4
+        - hp h3c
+        - hp icf
+        - hpe
+        - proliant
+        - huawei
+        - 3com huawei
+        - ibm
+        - datapower
+        - lenovo
+        - idrac
+        - dell idrac
+        - infinera
+        - coriant
+        - infoblox
+        - isilon
+        - ixsystems
+        - truenas
+        - juniper
+        - junos
+        - kyocera
+        - linksys
+        - mcafee
+        - mikrotik
+        - mellanox
+        - nasuni
+        - nec
+        - net-snmp
+        - netsnmp
+        - netapp
+        - netgear
+        - readynas
+        - omron
+        - opengear
+        - palo alto
+        - cloudgenix
+        - peplink
+        - raritan
+        - riverbed
+        - ruckus
+        - serveriron
+        - server-iron
+        - servertech
+        - silverpeak
+        - silver peak
+        - edgeconnect
+        - sinetica
+        - sophos
+        - synology
+        - diskstation
+        - tp-link
+        - tplink
+        - tripplite
+        - tripp lite
+        - ubiquiti
+        - unifi
+        - velocloud
+        - vertiv
+        - liebert
+        - watchguard
+        - western digital
+        - wd
+        - mycloud
+        - zebra
+        - zyxel
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector discovers and monitors any SNMP-enabled network device.
+          
+          - **Built-in vendor profiles**: Netdata ships with a [large library of profiles](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/config/go.d/snmp.profiles/default) for major vendors, enabling automatic, out-of-the-box monitoring—**no manual OID configuration needed** for common hardware.
+          - **Custom profiles supported**: Users can extend or override stock profiles to add new devices, modify charts, or collect additional OIDs.
+          - **Automatic vendor/model detection**: Devices are matched to the right profile using selectors such as `sysObjectID` and `sysDescr`.
+          - **ICMP ping**: Optional round-trip latency monitoring alongside SNMP, with a `ping_only` mode available.
+          - **SNMP v1, v2c, and v3 support**: Fully implemented via the [gosnmp](https://github.com/gosnmp/gosnmp) library.
+
+
+          **Built-in profiles for major vendors:**
+
+          | Category | Vendors |
+          |----------|---------|
+          | Switches & Routers | Cisco (Catalyst, Nexus, ASR, ISR), Arista, Juniper, HP/HPE, Dell, Extreme |
+          | Firewalls | Palo Alto, Fortinet FortiGate, Cisco ASA, Checkpoint, SonicWall |
+          | Wireless | Aruba, Cisco WLC, Ubiquiti, Alcatel-Lucent |
+          | Load Balancers | F5 BIG-IP, Citrix NetScaler, A10 Thunder |
+          | Infrastructure | APC UPS/PDU, Dell servers, plus standard MIBs (BGP, OSPF, TCP/UDP) |
+          
+          > This table highlights common vendors—the **full library includes many more**.
+        method_description: |
+          :::info
+
+          See: [SNMP Profile Format](/src/go/plugin/go.d/collector/snmp/profile-format.md) to learn how to write your own or extend stock ones.
+
+          :::
+
+          **Profile locations**
+
+          | Type | Default path | Notes |
+          |------|--------------|-------|
+          | **Stock profiles** | `/usr/lib/netdata/conf.d/go.d/snmp.profiles/default/` | Shipped with Netdata |
+          | **User profiles** | `/etc/netdata/go.d/snmp.profiles/` | Place custom or modified profiles here |
+
+          > Depending on installation, paths may be prefixed with `/opt/netdata`.
+
+          A **profile** defines:
+
+          - Device selectors for auto-matching (e.g. `sysObjectID`, `sysDescr`)
+          - The exact OIDs to collect (scalars and tables)
+          - How to label table rows (metric tags)
+          - Chart/metric metadata (units, families, types), including optional **virtual metrics**
+          
+          **At runtime, the collector**:
+          
+          1. Reads standard system OIDs (e.g. `sysObjectID`, `sysDescr`) to identify the device
+          2. Picks the best matching vendor/model profile(s)
+          3. Collects exactly the metrics those profiles define
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            SNMP service discovery can automatically scan configured networks and feed the SNMP collector with discovered devices.
+
+            - Disabled by default; enable and configure explicitly.
+            - Supports single IPs, ranges, and CIDR blocks (up to 512 IPs per subnet).
+            - Uses the provided SNMP credentials (v1/v2c/v3) to probe devices.
+            - Caches discovery results (configurable) to reduce network load.
+            - At collection time, each discovered device is matched to the appropriate [profile](/src/go/plugin/go.d/collector/snmp/profile-format.md) based on its `sysObjectID`, `sysDescr`, and the profile’s selector rules.
+
+            The configuration file name is [go.d/sd/snmp.conf](https://github.com/netdata/netdata/blob/master/src/go/plugin/go.d/config/go.d/sd/snmp.conf).
+
+            You can edit the configuration file using the edit-config script from the Netdata [config directory](https://learn.netdata.cloud/docs/netdata-agent/configuration#the-netdata-config-directory).
+
+            ```bash
+            cd /etc/netdata 2>/dev/null || cd /opt/netdata/etc/netdata
+            sudo ./edit-config go.d/sd/snmp.conf
+            ```
+        limits:
+          description: ""
+        performance_impact:
+          description: |
+            **Device constraints**: Many SNMP devices (e.g., access switches) have limited CPU/ASIC time for management. If you see timeouts or gaps, reduce `update_every` or `max_repetitions`, or stagger polling across devices.
+
+            **Concurrent polling**: Parallel access by multiple tools may cause missed counters on some devices. Increase the collection interval (`update_every`) to reduce request pressure.
+    setup:
+      prerequisites:
+        list:
+          - title: "Prepare the SNMP device"
+            description: |
+              Before configuring the collector:
+              - Enable the SNMP service on the target device (via its management interface).
+              - Ensure the device is reachable from the Netdata node on UDP/161.
+              - Gather connection details: IP/DNS, SNMP version, and either a community (v1/v2c) or v3 credentials (user, auth/priv).
+      configuration:
+        file:
+          name: go.d/snmp.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              group: Collection
+              description: Data collection frequency.
+              default_value: 10
+              required: false
+            - name: autodetection_retry
+              group: Collection
+              description: Recheck interval in seconds. Zero means no recheck will be scheduled.
+              default_value: 0
+              required: false
+
+            - name: hostname
+              group: Target
+              description: Target host (IP or DNS name, IPv4/IPv6).
+              default_value: ""
+              required: true
+
+            - name: community
+              group: SNMPv1/2
+              description: SNMPv1/2 community string.
+              default_value: public
+              required: false
+
+            - name: user.name
+              group: SNMPv3
+              description: SNMPv3 user name.
+              default_value: ""
+              required: false
+            - name: user.level
+              group: SNMPv3
+              description: Security level of SNMPv3 messages.
+              default_value: ""
+              required: false
+              detailed_description: |
+                The security of an SNMPv3 message as per RFC 3414 (`user.level`):
+
+                | String value | Int value | Description                              |
+                |:------------:|:---------:|------------------------------------------|
+                |     none     |     1     | no message authentication or encryption  |
+                |  authNoPriv  |     2     | message authentication and no encryption |
+                |   authPriv   |     3     | message authentication and encryption    |
+            - name: user.auth_proto
+              group: SNMPv3
+              description: Authentication protocol for SNMPv3 messages.
+              default_value: ""
+              required: false
+              detailed_description: |
+                The digest algorithm for SNMPv3 messages that require authentication (`user.auth_proto`):
+
+                | String value | Int value | Description                               |
+                |:------------:|:---------:|-------------------------------------------|
+                |     none     |     1     | no message authentication                 |
+                |     md5      |     2     | MD5 message authentication (HMAC-MD5-96)  |
+                |     sha      |     3     | SHA message authentication (HMAC-SHA-96)  |
+                |    sha224    |     4     | SHA message authentication (HMAC-SHA-224) |
+                |    sha256    |     5     | SHA message authentication (HMAC-SHA-256) |
+                |    sha384    |     6     | SHA message authentication (HMAC-SHA-384) |
+                |    sha512    |     7     | SHA message authentication (HMAC-SHA-512) |
+            - name: user.auth_key
+              group: SNMPv3
+              description: Authentication protocol pass phrase for SNMPv3 messages.
+              default_value: ""
+              required: false
+            - name: user.priv_proto
+              group: SNMPv3
+              description: Privacy protocol for SNMPv3 messages.
+              default_value: ""
+              required: false
+              detailed_description: |
+                The encryption algorithm for SNMPv3 messages that require privacy (`user.priv_proto`):
+
+                | String value | Int value | Description                                                             |
+                |:------------:|:---------:|-------------------------------------------------------------------------|
+                |     none     |     1     | no message encryption                                                   |
+                |     des      |     2     | ES encryption (CBC-DES)                                                 |
+                |     aes      |     3     | 128-bit AES encryption (CFB-AES-128)                                    |
+                |    aes192    |     4     | 192-bit AES encryption (CFB-AES-192) with "Blumenthal" key localization |
+                |    aes256    |     5     | 256-bit AES encryption (CFB-AES-256) with "Blumenthal" key localization |
+                |   aes192c    |     6     | 192-bit AES encryption (CFB-AES-192) with "Reeder" key localization     |
+                |   aes256c    |     7     | 256-bit AES encryption (CFB-AES-256) with "Reeder" key localization     |
+            - name: user.priv_key
+              group: SNMPv3
+              description: Privacy protocol pass phrase for SNMPv3 messages.
+              default_value: ""
+              required: false
+            - name: user.context_name
+              group: SNMPv3
+              description: SNMPv3 context name used to address a specific MIB view on multi-context agents (e.g. virtual routers, logical partitions, snmpsim-simulated devices). Leave empty to use the default context.
+              default_value: ""
+              required: false
+
+            - name: options.version
+              group: SNMP transport
+              description: "SNMP version. Available versions: 1, 2, 3."
+              default_value: 2
+              required: false
+            - name: options.port
+              group: SNMP transport
+              description: Target port.
+              default_value: 161
+              required: false
+            - name: options.retries
+              group: SNMP transport
+              description: Retries to attempt.
+              default_value: 1
+              required: false
+            - name: options.timeout
+              group: SNMP transport
+              description: SNMP request/response timeout.
+              default_value: 5
+              required: false
+            - name: options.max_repetitions
+              group: SNMP transport
+              description: Controls how many SNMP variables to retrieve in a single GETBULK request.
+              default_value: 25
+              required: false
+            - name: options.max_request_size
+              group: SNMP transport
+              description: Maximum number of OIDs allowed in a single GET request.
+              default_value: 60
+              required: false
+
+            - name: ping_only
+              group: Ping
+              description: Collect only ICMP round-trip metrics and skip periodic SNMP polling. Implies ping is enabled regardless of the `ping.enabled` setting. A minimal SNMP sysInfo probe still runs at setup for naming/labels/metadata.
+              default_value: false
+              required: false
+            - name: ping.enabled
+              group: Ping
+              description: Enable ICMP round-trip measurements (runs alongside SNMP). When disabled, no ping metrics are collected.
+              default_value: true
+              required: false
+            - name: ping.privileged
+              group: Ping
+              description: Use raw ICMP (privileged). If false, unprivileged mode is used.
+              default_value: true
+              required: false
+            - name: ping.packets
+              group: Ping
+              description: Number of ping packets to send per iteration.
+              default_value: 3
+              required: false
+            - name: ping.interval
+              group: Ping
+              description: Interval between sending ping packets.
+              default_value: 100ms
+              required: false
+
+            - name: manual_profiles
+              group: Profiles
+              description: A list of profiles to force-apply when auto-detection cannot be used.
+              default_value: "[]"
+              required: false
+
+            - name: create_vnode
+              group: Virtual node
+              description: If set, the collector will create a Netdata Virtual Node for this SNMP device, which will appear as a separate Node in Netdata.
+              default_value: "true"
+              required: false
+            - name: vnode_device_down_threshold
+              group: Virtual node
+              description: Number of consecutive failed data collections before marking the device as down.
+              default_value: 3
+              required: false
+            - name: vnode.guid
+              group: Virtual node
+              description: A unique identifier for the Virtual Node. If not set, a GUID will be automatically generated from the device's IP address.
+              default_value: ""
+              required: false
+            - name: vnode.hostname
+              group: Virtual node
+              description: The hostname that will be used for the Virtual Node. If not set, the device's hostname will be used.
+              default_value: ""
+              required: false
+            - name: vnode.labels
+              group: Virtual node
+              description: Additional key-value pairs to associate with the Virtual Node.
+              default_value: ""
+              required: false
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: SNMPv1/2
+              description: |
+                In this example:
+
+                - the SNMP device is `192.0.2.1`.
+                - the SNMP version is `2`.
+                - the SNMP community is `public`.
+                - we will update the values every 10 seconds.
+
+                Profiles are auto-selected at runtime
+              config: |
+                jobs:
+                  - name: switch
+                    update_every: 10
+                    hostname: 192.0.2.1
+                    community: public
+                    options:
+                      version: 2
+            - name: SNMPv3
+              description: |
+                To use SNMPv3:
+
+                - use `user` instead of `community`.
+                - set `options.version` to 3.
+              config: |
+                jobs:
+                  - name: switch
+                    update_every: 10
+                    hostname: 192.0.2.1
+                    options:
+                      version: 3
+                    user:
+                      name: username
+                      level: authPriv
+                      auth_proto: sha256
+                      auth_key: auth_protocol_passphrase
+                      priv_proto: aes256
+                      priv_key: priv_protocol_passphrase
+            - name: SNMPv3 with multiple devices
+              description: |
+                This example monitors multiple SNMP devices that share the same SNMPv3 credentials.
+
+                It uses [YAML anchors](https://yaml.org/spec/1.2.2/#3222-anchors-and-aliases) to define the
+                full job once (`&snmp_v3_job`) and then reuse it with `<<: *snmp_v3_job`,
+                overriding only `name` and `hostname` for each additional device.
+              config: |
+                jobs:
+                  - &snmp_v3_job
+                    name: switch1
+                    update_every: 10
+                    hostname: 192.0.2.1
+                    options:
+                      version: 3
+                    user:
+                      name: username
+                      level: authPriv
+                      auth_proto: sha256
+                      auth_key: auth_protocol_passphrase
+                      priv_proto: aes256
+                      priv_key: priv_protocol_passphrase
+
+                  - <<: *snmp_v3_job
+                    name: switch2
+                    hostname: 192.0.2.2
+
+                  - <<: *snmp_v3_job
+                    name: switch3
+                    hostname: 192.0.2.3
+    alerts: []
+    functions:
+      description: |
+        This collector exposes real-time functions for interactive troubleshooting in the Live tab.
+      list:
+        - id: interfaces
+          name: Network Interfaces
+          description: |
+            Provides detailed network interface traffic and status metrics from SNMP-enabled devices.
+
+            This function queries cached SNMP interface data collected during regular polling cycles and presents it in a sortable, filterable table. Each row represents a network interface on the monitored SNMP device, with comprehensive metrics for traffic analysis, error monitoring, and operational status tracking.
+
+            Use cases:
+            - Identify top bandwidth-consuming interfaces on routers, switches, and access points
+            - Monitor interface operational and administrative status for network health
+            - Investigate packet errors, discards, and unusual traffic patterns
+
+            Data is sourced from the IF-MIB (RFC 2863) interface counters and is cached from the last successful SNMP collection. No additional SNMP requests are triggered when calling this function.
+          parameters:
+            - id: if_type_group
+              name: Type Group
+              description: Filter interfaces by their type classification group. Custom mapping categorizes IANA interface types into practical groups for easier filtering.
+              type: select
+              required: true
+              default: ethernet
+              options:
+                - id: ethernet
+                  name: Ethernet
+                  default: true
+                - id: aggregation
+                  name: Aggregation
+                - id: virtual
+                  name: Virtual
+                - id: other
+                  name: Other
+          returns:
+            description: Network interface metrics from cached SNMP data, including traffic rates, packet statistics, operational status, and error counters. Each row represents one physical or virtual interface.
+            columns:
+              - name: Interface
+                type: string
+                unit: ""
+                description: Network interface name or identifier (e.g., eth0, GigabitEthernet1/0/1, Vlan100)
+              - name: Type
+                type: string
+                unit: ""
+                description: IANA-assigned interface type from IF-MIB (e.g., ethernetCsmacd, ieee80211, softwareLoopback)
+              - name: Type Group
+                type: string
+                unit: ""
+                description: "Custom categorization mapping IANA interface types into practical groups: Ethernet (physical Ethernet interfaces), Aggregation (LAG/port-channels, bonds), Virtual (VLANs, loopbacks), or Other (all remaining types)"
+              - name: Admin Status
+                type: string
+                unit: ""
+                description: "Administrative state configured on the interface: up (enabled for use), down (administratively disabled), or testing (currently in test mode). Different from operational status."
+              - name: Oper Status
+                type: string
+                unit: ""
+                description: "Current operational state of the interface: up (operational and passing traffic), down (not operational), testing (in test mode), unknown (status cannot be determined), dormant (waiting for external actions), notPresent (interface removed but configuration remains), or lowerLayerDown (interface down due to lower-layer issues)"
+              - name: Traffic In
+                type: float
+                unit: "bit/s"
+                description: Inbound network traffic rate in bits per second. High values indicate heavy inbound data flow that may require capacity planning.
+              - name: Traffic Out
+                type: float
+                unit: "bit/s"
+                description: Outbound network traffic rate in bits per second. High values indicate heavy outbound data flow. Compare with Traffic In to identify asymmetric usage patterns.
+              - name: Unicast In
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of unicast packets (destined for a single recipient) received per second. Normal traffic pattern for point-to-point communications.
+              - name: Unicast Out
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of unicast packets (addressed to a single destination) transmitted per second.
+              - name: Broadcast In
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of broadcast packets (sent to all nodes on network) received per second. High values may indicate network storms, ARP flooding, or misconfigured devices.
+              - name: Broadcast Out
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of broadcast packets transmitted per second. Consistently high broadcast rates can degrade network performance.
+              - name: Packets In
+                type: float
+                unit: "packets/s"
+                description: Total inbound packet rate (sum of unicast, broadcast, and multicast) per second. Useful for overall interface load assessment.
+              - name: Packets Out
+                type: float
+                unit: "packets/s"
+                description: Total outbound packet rate (sum of unicast, broadcast, and multicast) per second.
+              - name: Errors In
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of inbound packets with errors that prevented delivery. Non-zero values indicate physical layer issues (cable problems, signal integrity) or buffer overruns.
+              - name: Errors Out
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of outbound packets with transmission errors. Non-zero values may indicate interface hardware issues, cabling problems, or duplex mismatches.
+              - name: Discards In
+                type: float
+                unit: "packets/s"
+                description: Rate of inbound packets deliberately discarded by the device (often due to resource constraints, security policies, or unrecognized frames). Unlike errors, the interface may have been functioning correctly but chose to drop the packet.
+              - name: Discards Out
+                type: float
+                unit: "packets/s"
+                description: Rate of outbound packets deliberately discarded. Can indicate output queue overflows, ACL drops, or security policy rejections.
+              - name: Multicast In
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of multicast packets (destined for a group) received per second. Common in video streaming, multicast applications, and routing protocols.
+              - name: Multicast Out
+                type: float
+                unit: "packets/s"
+                visibility: hidden
+                description: Rate of multicast packets transmitted per second.
+          performance: |
+            Uses cached SNMP data only, no additional SNMP requests are triggered:<br/>• Responses are instantaneous from memory cache<br/>• Large devices with many interfaces may return many rows
+          security: |
+            Exposes interface names, operational status, and traffic counters only:<br/>• No packet payloads or authentication credentials are exposed<br/>• No device configuration details are exposed
+          availability: |
+            Available when:<br/>• The collector has completed at least one data collection cycle<br/>• Interface data is cached from the last successful SNMP collection<br/>• Returns HTTP 503 if cache is not ready yet
+
+        - id: topology
+          name: Network Topology
+          description: |
+            Provides the agent-wide SNMP topology view built from all currently running topology-enabled SNMP jobs.
+
+            This function reads cached LLDP/CDP data collected by the independent topology refresh loop and returns a topology schema (devices, links, and stats). No additional SNMP requests are triggered when calling this function.
+
+            Use cases:
+            - Discover Layer 2 neighbors and link mapping
+            - Validate cabling and port connections
+            - Identify adjacent devices that are discovered but not monitored
+          parameters:
+            - id: nodes_identity
+              name: Nodes Identity
+              description: Choose actor identity strategy. `ip` collapses nodes by management IP and removes non-IP inferred actors. `mac` keeps MAC-oriented identities.
+              type: select
+              required: true
+              default: ip
+              options:
+                - id: ip
+                  name: IP
+                  default: true
+                - id: mac
+                  name: MAC
+            - id: map_type
+              name: Map
+              description: Select the topology map mode. Defaults to the managed-device LLDP/CDP view. Other modes progressively include inferred devices and lower-confidence links.
+              type: select
+              required: true
+              default: lldp_cdp_managed
+              options:
+                - id: lldp_cdp_managed
+                  name: LLDP/CDP/Managed Devices Map
+                  default: true
+                - id: high_confidence_inferred
+                  name: High Confidence Inferred Map
+                - id: all_devices_low_confidence
+                  name: All Devices (Low Confidence)
+            - id: inference_strategy
+              name: Infer Strategy
+              description: Select the inference algorithm used for FDB/STP/CDP correlation.
+              type: select
+              required: true
+              default: fdb_minimum_knowledge
+              options:
+                - id: fdb_minimum_knowledge
+                  name: FDB Minimum-Knowledge (Baseline)
+                  default: true
+                - id: stp_parent_tree
+                  name: STP Parent Tree
+                - id: fdb_pairwise_minimum_knowledge
+                  name: FDB Pairwise Minimum-Knowledge
+                - id: stp_fdb_correlated
+                  name: STP + FDB Correlated
+                - id: cdp_fdb_hybrid
+                  name: CDP + FDB Hybrid
+            - id: managed_snmp_device_focus
+              name: Focus On
+              description: Limit depth filtering to selected managed SNMP roots. The static default is `all_devices`; additional `ip:<address>` options are supplied dynamically from the current managed SNMP jobs.
+              type: multiselect
+              required: true
+              default: all_devices
+              options:
+                - id: all_devices
+                  name: All Devices
+                  default: true
+            - id: depth
+              name: Focus Depth
+              description: Limit topology expansion hops from the focus roots. `all` disables depth filtering.
+              type: select
+              required: true
+              default: all
+              options:
+                - id: all
+                  name: All
+                  default: true
+                - id: "0"
+                  name: "0"
+                - id: "1"
+                  name: "1"
+                - id: "2"
+                  name: "2"
+                - id: "3"
+                  name: "3"
+                - id: "4"
+                  name: "4"
+                - id: "5"
+                  name: "5"
+                - id: "6"
+                  name: "6"
+                - id: "7"
+                  name: "7"
+                - id: "8"
+                  name: "8"
+                - id: "9"
+                  name: "9"
+                - id: "10"
+                  name: "10"
+          returns:
+            description: Agent-wide topology data in a JSON schema suitable for cross-agent aggregation.
+            columns:
+              - name: schema_version
+                type: integer
+                unit: ""
+                description: Topology schema version.
+              - name: agent_id
+                type: string
+                unit: ""
+                description: Netdata Agent or vnode identifier that collected the data.
+              - name: collected_at
+                type: string
+                unit: ""
+                description: Collection timestamp in RFC 3339 format.
+              - name: devices
+                type: array
+                unit: ""
+                description: List of devices (local and discovered).
+              - name: links
+                type: array
+                unit: ""
+                description: List of discovered links (LLDP/CDP).
+              - name: stats
+                type: object
+                unit: ""
+                description: Summary stats (device/link counts).
+          performance: |
+            Uses cached SNMP data only, no additional SNMP requests are triggered:<br/>• Responses are instantaneous from memory cache<br/>• Large devices with many discovered neighbors may return many rows
+          security: |
+            Exposes discovered device identifiers, interface/port identifiers, and management addresses only:<br/>• No packet payloads or authentication credentials are exposed<br/>• No device configuration details are exposed
+          availability: |
+            Available when:<br/>• The collector has completed at least one successful topology refresh cycle<br/>• LLDP/CDP topology data is present in cache from the last successful topology refresh<br/>• Returns HTTP 503 if topology cache is not ready yet
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: |
+        Metrics and charts are **defined by the matched SNMP profile(s)** at runtime. They differ by vendor/model/OS and may include, for example, interface counters, optics, CPU/memory, temperature, VLANs, and more. Use the **Metrics** tab on the device’s dashboard to see exactly what is collected for that device.
+
+        :::tip
+
+        To understand the structure of these profiles (metrics, tags, virtual metrics, etc.), see **[SNMP Profile Format](/src/go/plugin/go.d/collector/snmp/profile-format.md)**.
+
+        :::
+
+        If `ping.enabled` is true, ICMP latency/packet-loss charts are also provided (or exclusively, when `ping_only: true`).
+      availability: []
+      scopes: []
+    troubleshooting:
+      problems:
+        list:
+          - name: Debugging Gaps on Charts
+            description: |
+              If your SNMP charts show gaps, it means the collector could not finish metric collection before the next scheduled run. This usually happens when SNMP tables take longer to collect than your configured `update_every`.
+
+              These gaps do *not* mean the device stopped exporting SNMP metrics — only that the collector had to skip cycles.
+
+              **Step 1: Check the Logs**
+
+              [Look for messages](#getting-logs) like:
+
+              ```text
+              level=warn msg="skipping data collection: previous run is still in progress for 4s (skipped 4 times in a row, interval 1s)" collector=snmp job=your_device
+              level=info msg="data collection resumed after 4.36s (skipped 4 times)" collector=snmp job=your_device
+              ```
+
+              The “resumed after” message shows how long the previous collection actually took.  
+              For example, if a run needs ~4.4 seconds and `update_every` is 1 second, 4 cycles will be skipped.
+
+
+              **Step 2: Check Collection Timings**
+
+              Open **SNMP → Internal → Stats** in the dashboard.  
+              The **SNMP profile collection timings** chart shows how long each part of the SNMP polling takes.  
+              Table metrics are usually the slowest and often determine the total collection time.
+
+              **Step 3: Increase the data collection interval**
+
+              [Set `update_every`](#setup) to a value **higher than your slowest collection time**, with some extra buffer for network variability.
+
+              | Typical Collection Time | Recommended `update_every` |
+              |-------------------------|-----------------------------|
+              | < 2 seconds             | 2 seconds                  |
+              | 2–5 seconds             | 5 seconds                  |
+              | 5–10 seconds            | 10 seconds                 |
+              | > 10 seconds            | collection_time × 2        |
+
+              :::info
+
+              - **Rule of thumb:** `update_every` should be at least 2× your slowest table collection time.  
+              - The default `update_every: 10` works well in most environments.  
+              - Only reduce it if your device consistently responds fast enough.
+
+              :::
+
+              **Quick Checklist**
+              1. Do logs show “skipping data collection”?  
+              2. Does *Internal → Stats* show collection time > `update_every`?  
+              3. Increase `update_every` until skips disappear.

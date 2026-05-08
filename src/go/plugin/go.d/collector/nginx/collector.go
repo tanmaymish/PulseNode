@@ -1,0 +1,113 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package nginx
+
+import (
+	"context"
+	_ "embed"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/netdata/netdata/go/plugins/pkg/confopt"
+	"github.com/netdata/netdata/go/plugins/pkg/web"
+	"github.com/netdata/netdata/go/plugins/plugin/framework/collectorapi"
+)
+
+//go:embed "config_schema.json"
+var configSchema string
+
+func init() {
+	collectorapi.Register("nginx", collectorapi.Creator{
+		JobConfigSchema: configSchema,
+		Create:          func() collectorapi.CollectorV1 { return New() },
+		Config:          func() any { return &Config{} },
+	})
+}
+
+func New() *Collector {
+	return &Collector{
+		Config: Config{
+			HTTPConfig: web.HTTPConfig{
+				RequestConfig: web.RequestConfig{
+					URL: "http://127.0.0.1/stub_status",
+				},
+				ClientConfig: web.ClientConfig{
+					Timeout: confopt.Duration(time.Second * 1),
+				},
+			},
+		},
+		charts: charts.Copy(),
+	}
+}
+
+type Config struct {
+	Vnode              string `yaml:"vnode,omitempty" json:"vnode"`
+	UpdateEvery        int    `yaml:"update_every,omitempty" json:"update_every"`
+	AutoDetectionRetry int    `yaml:"autodetection_retry,omitempty" json:"autodetection_retry"`
+	web.HTTPConfig     `yaml:",inline" json:""`
+}
+
+type Collector struct {
+	collectorapi.Base
+	Config `yaml:",inline" json:""`
+
+	charts *collectorapi.Charts
+
+	httpClient *http.Client
+}
+
+func (c *Collector) Configuration() any {
+	return c.Config
+}
+
+func (c *Collector) Init(context.Context) error {
+	if c.URL == "" {
+		return errors.New("nginx URL required but not set")
+	}
+
+	httpClient, err := web.NewHTTPClient(c.ClientConfig)
+	if err != nil {
+		return fmt.Errorf("failed initializing http client: %w", err)
+	}
+	c.httpClient = httpClient
+
+	c.Debugf("using URL %s", c.URL)
+	c.Debugf("using timeout: %s", c.Timeout)
+
+	return nil
+}
+
+func (c *Collector) Check(context.Context) error {
+	mx, err := c.collect()
+	if err != nil {
+		return err
+	}
+
+	if len(mx) == 0 {
+		return errors.New("no metrics collected")
+	}
+
+	return nil
+}
+
+func (c *Collector) Charts() *Charts {
+	return c.charts
+}
+
+func (c *Collector) Collect(context.Context) map[string]int64 {
+	mx, err := c.collect()
+	if err != nil {
+		c.Error(err)
+		return nil
+	}
+
+	return mx
+}
+
+func (c *Collector) Cleanup(context.Context) {
+	if c.httpClient != nil {
+		c.httpClient.CloseIdleConnections()
+	}
+}

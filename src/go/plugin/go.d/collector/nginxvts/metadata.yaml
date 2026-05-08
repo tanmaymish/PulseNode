@@ -1,0 +1,301 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-nginxvts
+      plugin_name: go.d.plugin
+      module_name: nginxvts
+      monitored_instance:
+        name: NGINX VTS
+        link: https://www.nginx.com/
+        icon_filename: nginx.svg
+        categories:
+          - data-collection.web-servers-and-proxies
+      keywords:
+        - webserver
+      related_resources:
+        integrations:
+          list:
+            - plugin_name: go.d.plugin
+              module_name: web_log
+            - plugin_name: go.d.plugin
+              module_name: httpcheck
+            - plugin_name: apps.plugin
+              module_name: apps
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors NGINX servers with [virtual host traffic status module](https://github.com/vozlt/nginx-module-vts).
+        method_description: |
+          It sends HTTP requests to the NGINX VTS location [status](https://github.com/vozlt/nginx-module-vts#synopsis), 
+          which is a built-in location that provides metrics about the NGINX VTS server.
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            By default, it detects NGINX instances running on localhost.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list:
+          - title: Configure nginx-vts module
+            description: |
+              To configure nginx-vts, see the [https://github.com/vozlt/nginx-module-vts#installation).
+      configuration:
+        file:
+          name: go.d/nginxvts.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: http://localhost/status/format/json
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: "GET"
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              folding:
+                enabled: false
+              description: A basic example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1/status/format/json
+            - name: HTTP authentication
+              description: Basic HTTP authentication.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1/server-status?auto
+                    username: username
+                    password: password
+            - name: HTTPS with self-signed certificate
+              description: |
+                Do not validate server certificate chain and hostname.
+              config: |
+                jobs:
+                  - name: local
+                    url: https://127.0.0.1/status/format/json
+                    tls_skip_verify: yes
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1/status/format/json
+                
+                  - name: remote
+                    url: http://192.0.2.1/status/format/json
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: These metrics refer to the entire monitored application.
+          labels: []
+          metrics:
+            - name: nginxvts.requests_total
+              description: Total requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: nginxvts.active_connections
+              description: Active connections
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: nginxvts.connections_total
+              description: Total connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: reading
+                - name: writing
+                - name: waiting
+                - name: accepted
+                - name: handled
+            - name: nginxvts.uptime
+              description: Uptime
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: uptime
+            - name: nginxvts.shm_usage
+              description: Shared memory size
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: max
+                - name: used
+            - name: nginxvts.shm_used_node
+              description: Number of node using shared memory
+              unit: nodes
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: nginxvts.server_requests_total
+              description: Total number of client requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: nginxvts.server_responses_total
+              description: Total number of responses by code class
+              unit: responses/s
+              chart_type: line
+              dimensions:
+                - name: 1xx
+                - name: 2xx
+                - name: 3xx
+                - name: 4xx
+                - name: 5xx
+            - name: nginxvts.server_traffic_total
+              description: Total amount of data transferred to and from the server
+              unit: bytes/s
+              chart_type: line
+              dimensions:
+                - name: in
+                - name: out
+            - name: nginxvts.server_cache_total
+              description: Total server cache
+              unit: events/s
+              chart_type: line
+              dimensions:
+                - name: miss
+                - name: bypass
+                - name: expired
+                - name: stale
+                - name: updating
+                - name: revalidated
+                - name: hit
+                - name: scarce

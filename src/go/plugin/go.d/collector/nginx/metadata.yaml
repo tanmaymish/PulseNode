@@ -1,0 +1,297 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-nginx
+      plugin_name: go.d.plugin
+      module_name: nginx
+      monitored_instance:
+        name: NGINX
+        link: https://www.nginx.com/
+        categories:
+          - data-collection.web-servers-and-proxies
+        icon_filename: nginx.svg
+      related_resources:
+        integrations:
+          list:
+            - plugin_name: go.d.plugin
+              module_name: httpcheck
+            - plugin_name: go.d.plugin
+              module_name: web_log
+            - plugin_name: apps.plugin
+              module_name: apps
+            - plugin_name: cgroups.plugin
+              module_name: /sys/fs/cgroup
+              monitored_instance_name: Containers
+      alternative_monitored_instances: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - nginx
+        - web
+        - webserver
+        - http
+        - proxy
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors the activity and performance of NGINX servers, and collects metrics such as the number of connections, their status, and client requests.
+        method_description: |
+          It sends HTTP requests to the NGINX location [stub-status](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html), which is a built-in location that provides metrics about the NGINX server.
+      default_behavior:
+        auto_detection:
+          description: |
+            By default, it detects NGINX instances running on localhost that are listening on port 80.
+            On startup, it tries to collect metrics from:
+            
+            - http://127.0.0.1/basic_status
+            - http://localhost/stub_status
+            - http://127.0.0.1/stub_status
+            - http://127.0.0.1/nginx_status
+            - http://127.0.0.1/status
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+      additional_permissions:
+        description: ""
+      multi_instance: true
+      supported_platforms:
+        include: []
+        exclude: []
+    setup:
+      prerequisites:
+        list:
+          - title: Enable status support
+            description: |
+              Configure [ngx_http_stub_status_module](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html).
+
+              1. Add a status location
+
+                 Create a small server/location that only listens on localhost and exposes `/stub_status`:
+
+                 **For local monitoring (default):**
+
+                 ```nginx
+                   # /etc/nginx/conf.d/stub_status.conf
+                   server {
+                       listen 127.0.0.1:80;
+                       server_name localhost 127.0.0.1;
+
+                       location = /stub_status {
+                           stub_status;        # exposes NGINX counters
+                           access_log off;     # keep logs clean
+                           allow 127.0.0.1;    # only local access
+                           deny all;
+                       }
+                   }
+                 ```
+
+                  **For remote monitoring:**
+                  - Change `listen` to bind to an accessible interface (e.g., `listen 80;`)
+                  - Replace `allow 127.0.0.1;` with your Netdata collector's IP address
+                  - Keep `deny all;` to block other IPs
+
+              2. Reload NGINX and restart Netdata
+
+                 ```bash
+                 nginx -t
+                 # if OK:
+                 systemctl reload nginx    # or: nginx -s reload
+
+                 systemctl restart netdata
+                 ```
+
+                 After restart, Netdata will auto-detect the endpoint and begin collecting NGINX metrics.
+      configuration:
+        file:
+          name: go.d/nginx.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: http://127.0.0.1/stub_status
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: GET
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              description: A basic example configuration.
+              folding:
+                enabled: false
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1/stub_status
+            - name: HTTP authentication
+              description: Basic HTTP authentication.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1/stub_status
+                    username: username
+                    password: password
+            - name: HTTPS with self-signed certificate
+              description: NGINX with enabled HTTPS and self-signed certificate.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1/stub_status
+                    tls_skip_verify: yes
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1/stub_status
+                
+                  - name: remote
+                    url: http://192.0.2.1/stub_status
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: These metrics refer to the entire monitored application.
+          labels: []
+          metrics:
+            - name: nginx.connections
+              description: Active Client Connections Including Waiting Connections
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: nginx.connections_status
+              description: Active Connections Per Status
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: reading
+                - name: writing
+                - name: idle
+            - name: nginx.connections_accepted_handled
+              description: Accepted And Handled Connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: accepted
+                - name: handled
+            - name: nginx.requests
+              description: Client Requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests

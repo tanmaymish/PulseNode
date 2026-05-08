@@ -1,0 +1,11 @@
+extends:
+  - _std-lldp-mib.yaml
+  - _std-topology-fdb-arp-mib.yaml
+  - _std-topology-q-bridge-mib.yaml
+  - _std-topology-stp-mib.yaml
+
+metadata:
+  device:
+    fields:
+      vendor:
+        value: "Arista"

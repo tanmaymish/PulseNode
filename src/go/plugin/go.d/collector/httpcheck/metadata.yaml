@@ -1,0 +1,372 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-httpcheck
+      plugin_name: go.d.plugin
+      module_name: httpcheck
+      monitored_instance:
+        name: HTTP Endpoints
+        link: ""
+        icon_filename: globe.svg
+        categories:
+          - data-collection.synthetic-testing
+      keywords:
+        - webserver
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors HTTP servers availability status and response time.
+
+          Possible statuses:
+
+          | Status        | Description                                                                                                                                                                                  |
+          |---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+          | success       | HTTP request completed successfully with a status code matching the configured `status_accepted` range (default: 200), and the response body and headers (if configured) match expectations. |
+          | timeout       | HTTP request timed out before receiving a response (default: 1 second).                                                                                                                      |
+          | no_connection | Failed to establish a connection to the target.                                                                                                                                              |
+          | redirect      | Received a redirect response (3xx status code) while `not_follow_redirects` is configured.                                                                                                   |
+          | bad_status    | HTTP request completed with a status code outside the configured `status_accepted` range (default: non-200).                                                                                 |
+          | bad_content   | HTTP request completed successfully but the response body does not match the expected content (when using `response_match`).                                                                 |
+          | bad_header    | HTTP request completed successfully but response headers do not match the expected values (when using `header_match`).                                                                      |
+        method_description: ""
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: ""
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: go.d/httpcheck.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 5
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: ""
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: status_accepted
+              description: "HTTP accepted response statuses. Anything else results in 'bad status' in the status chart."
+              default_value: "[200]"
+              required: false
+              group: Validation
+            - name: response_match
+              description: If the status code is accepted, match the response body against this regular expression.
+              default_value: ""
+              required: false
+              group: Validation
+            - name: header_match
+              description: "A set of rules to check for specific key-value pairs in response headers."
+              default_value: "[]"
+              required: false
+              group: Validation
+            - name: header_match.exclude
+              description: "When yes, the rule asserts the key-value pair must be absent."
+              default_value: no
+              required: false
+              group: Validation
+            - name: header_match.key
+              description: "Exact HTTP header name to check."
+              default_value: ""
+              required: true
+              group: Validation
+            - name: header_match.value
+              description: "The [pattern](https://github.com/netdata/netdata/tree/master/src/go/pkg/matcher#supported-format) to match against the header's value."
+              default_value: ""
+              required: false
+              group: Validation
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: GET
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: cookie_file
+              description: Path to cookie file. See [cookie file format](https://everything.curl.dev/http/cookies/fileformat).
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              description: A basic example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080
+            - name: With HTTP request headers
+              description: Configuration with HTTP request headers that will be sent by the client.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    headers:
+                      Host: localhost:8080
+                      User-Agent: netdata/go.d.plugin
+                      Accept: */*
+            - name: With `status_accepted`
+              description: A basic example configuration with non-default status_accepted.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    status_accepted:
+                      - 200
+                      - 204
+            - name: With `header_match`
+              description: Example configurations with `header_match`. See the value [pattern](https://github.com/netdata/netdata/tree/master/src/go/pkg/matcher#supported-format) syntax.
+              config: |
+                jobs:
+                    # The "X-Robots-Tag" header must be present in the HTTP response header,
+                    # but the value of the header does not matter.
+                    # This config checks for the presence of the header regardless of its value.
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    header_match:
+                      - key: X-Robots-Tag
+
+                    # The "X-Robots-Tag" header must be present in the HTTP response header
+                    # only if its value is equal to "noindex, nofollow".
+                    # This config checks both the presence of the header and its value.
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    header_match:
+                      - key: X-Robots-Tag
+                        value: '= noindex,nofollow'
+
+                    # The "X-Robots-Tag" header must not be present in the HTTP response header
+                    # but the value of the header does not matter.
+                    # This config checks for the presence of the header regardless of its value.
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    header_match:
+                      - key: X-Robots-Tag
+                        exclude: yes
+
+                    # The "X-Robots-Tag" header must not be present in the HTTP response header
+                    # only if its value is equal to "noindex, nofollow".
+                    # This config checks both the presence of the header and its value.
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    header_match:
+                      - key: X-Robots-Tag
+                        exclude: yes
+                        value: '= noindex,nofollow'
+            - name: HTTP authentication
+              description: Basic HTTP authentication.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    username: username
+                    password: password
+            - name: HTTPS with self-signed certificate
+              description: |
+                Do not validate server certificate chain and hostname.
+              config: |
+                jobs:
+                  - name: local
+                    url: https://127.0.0.1:8080
+                    tls_skip_verify: yes
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080
+                
+                  - name: remote
+                    url: http://192.0.2.1:8080
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: httpcheck_web_service_up
+        metric: httpcheck.status
+        info: "HTTP check endpoint ${label:url} liveness status"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/httpcheck.conf
+      - name: httpcheck_web_service_bad_content
+        metric: httpcheck.status
+        info: "Percentage of HTTP responses from ${label:url} with unexpected content in the last 5 minutes"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/httpcheck.conf
+      - name: httpcheck_web_service_bad_status
+        metric: httpcheck.status
+        info: "Percentage of HTTP responses from ${label:url} with unexpected status in the last 5 minutes"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/httpcheck.conf
+      - name: httpcheck_web_service_bad_header
+        metric: httpcheck.status
+        info: "Percentage of HTTP responses from ${label:url} with unexpected header in the last 5 minutes"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/httpcheck.conf
+      - name: httpcheck_web_service_timeouts
+        metric: httpcheck.status
+        info: "Percentage of timed-out HTTP requests to ${label:url} in the last 5 minutes"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/httpcheck.conf
+      - name: httpcheck_web_service_no_connection
+        metric: httpcheck.status
+        info: "Percentage of failed HTTP requests to ${label:url} in the last 5 minutes"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/httpcheck.conf
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: target
+          description: The metrics refer to the monitored target.
+          labels:
+            - name: url
+              description: url value that is set in the configuration file.
+          metrics:
+            - name: httpcheck.response_time
+              description: HTTP Response Time
+              unit: ms
+              chart_type: line
+              dimensions:
+                - name: time
+            - name: httpcheck.response_length
+              description: HTTP Response Body Length
+              unit: characters
+              chart_type: line
+              dimensions:
+                - name: length
+            - name: httpcheck.status
+              description: HTTP Check Status
+              unit: boolean
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: timeout
+                - name: redirect
+                - name: no_connection
+                - name: bad_content
+                - name: bad_header
+                - name: bad_status
+            - name: httpcheck.in_state
+              description: HTTP Current State Duration
+              unit: boolean
+              chart_type: line
+              dimensions:
+                - name: time

@@ -1,0 +1,189 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-openvpn
+      plugin_name: go.d.plugin
+      module_name: openvpn
+      monitored_instance:
+        name: OpenVPN
+        link: https://openvpn.net/
+        icon_filename: openvpn.svg
+        categories:
+          - data-collection.networking
+      keywords:
+        - openvpn
+        - vpn
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors OpenVPN servers.
+          
+          It uses OpenVPN [Management Interface](https://openvpn.net/community-resources/management-interface/) to collect metrics.
+        method_description: ""
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: ""
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list:
+          - title: Enable in go.d.conf.
+            description: |
+              This collector is disabled by default. You need to explicitly enable it in [go.d.conf](https://github.com/netdata/netdata/blob/master/src/go/plugin/go.d/config/go.d.conf).
+              
+              From the documentation for the OpenVPN Management Interface:
+              > Currently, the OpenVPN daemon can at most support a single management client any one time.
+              
+              It is disabled to not break other tools which use `Management Interface`.
+      configuration:
+        file:
+          name: go.d/openvpn.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: address
+              description: OpenVPN server address (`IP:PORT`).
+              default_value: 127.0.0.1:7505
+              required: true
+              group: Target
+            - name: timeout
+              description: Connection, read, write, and name resolution timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: per_user_stats
+              description: User selector. Defines which user metrics to collect.
+              default_value: ""
+              required: false
+              group: Filters
+              details: |
+                Metrics of users matching the selector will be collected.
+
+                - Logic: (pattern1 OR pattern2) AND !(pattern3 OR pattern4)
+                - Pattern syntax: [matcher](https://github.com/netdata/netdata/tree/master/src/go/pkg/matcher#supported-format).
+                - Syntax:
+
+                  ```yaml
+                  per_user_stats:
+                    includes:
+                      - pattern1
+                      - pattern2
+                    excludes:
+                      - pattern3
+                      - pattern4
+                  ```
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              description: A basic example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    address: 127.0.0.1:7505
+            - name: With user metrics
+              description: Collect metrics of all users.
+              config: |
+                jobs:
+                  - name: local
+                    address: 127.0.0.1:7505
+                    per_user_stats:
+                      includes:
+                        - "* *"
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    address: 127.0.0.1:7505
+                
+                  - name: remote
+                    address: 203.0.113.0:7505
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: These metrics refer to the entire monitored application.
+          labels: []
+          metrics:
+            - name: openvpn.active_clients
+              description: Total Number Of Active Clients
+              unit: clients
+              chart_type: line
+              dimensions:
+                - name: clients
+            - name: openvpn.total_traffic
+              description: Total Traffic
+              unit: kilobits/s
+              chart_type: area
+              dimensions:
+                - name: in
+                - name: out
+        - name: user
+          description: These metrics refer to the VPN user.
+          labels:
+            - name: username
+              description: VPN username
+          metrics:
+            - name: openvpn.user_traffic
+              description: User Traffic
+              unit: kilobits/s
+              chart_type: area
+              dimensions:
+                - name: in
+                - name: out
+            - name: openvpn.user_connection_time
+              description: User Connection Time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: time

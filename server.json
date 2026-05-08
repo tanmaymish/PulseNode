@@ -1,0 +1,34 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.netdata/mcp-server",
+  "title": "Netdata",
+  "description": "Real-time infrastructure monitoring with metrics, logs, alerts, and ML-based anomaly detection.",
+  "version": "2.8.5",
+  "websiteUrl": "https://www.netdata.cloud",
+  "repository": {
+    "url": "https://github.com/netdata/netdata",
+    "source": "github",
+    "subfolder": "docs/netdata-ai/mcp"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://app.netdata.cloud/api/v1/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {NETDATA_CLOUD_API_TOKEN}",
+          "description": "Netdata Cloud API token with scope:mcp",
+          "isRequired": true,
+          "isSecret": true,
+          "variables": {
+            "NETDATA_CLOUD_API_TOKEN": {
+              "description": "Netdata Cloud API token (create at app.netdata.cloud > User Settings > API Tokens with scope:mcp)",
+              "isSecret": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

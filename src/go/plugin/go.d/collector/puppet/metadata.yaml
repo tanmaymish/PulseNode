@@ -1,0 +1,229 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-puppet
+      plugin_name: go.d.plugin
+      module_name: puppet
+      monitored_instance:
+        name: Puppet
+        link: "https://www.puppet.com/"
+        categories:
+          - data-collection.cloud-and-devops
+        icon_filename: "puppet.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - puppet
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Puppet metrics, including JVM heap and non-heap memory, CPU usage, and file descriptors.
+        method_description: |
+          It uses Puppet's metrics API endpoint [/status/v1/services](https://www.puppet.com/docs/puppetserver/5.3/status-api/v1/services.html) to gather the metrics.
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            By default, it detects Puppet instances running on localhost that are listening on port 8140.
+            On startup, it tries to collect metrics from:
+
+            - https://127.0.0.1:8140
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "go.d/puppet.conf"
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: ""
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: https://127.0.0.1:8140
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: "GET"
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            enabled: true
+            title: "Config"
+          list:
+            - name: Basic with self-signed certificate
+              description: Puppet with self-signed TLS certificate.
+              config: |
+                jobs:
+                  - name: local
+                    url: https://127.0.0.1:8140
+                    tls_skip_verify: yes
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    url: https://127.0.0.1:8140
+                    tls_skip_verify: yes
+
+                  - name: remote
+                    url: https://192.0.2.1:8140
+                    tls_skip_verify: yes
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: "These metrics refer to the entire monitored application."
+          labels: []
+          metrics:
+            - name: puppet.jvm_heap
+              description: JVM Heap
+              unit: "MiB"
+              chart_type: area
+              dimensions:
+                - name: committed
+                - name: used
+            - name: puppet.jvm_nonheap
+              description: JVM Non-Heap
+              unit: "MiB"
+              chart_type: area
+              dimensions:
+                - name: committed
+                - name: used
+            - name: puppet.cpu
+              description: CPU usage
+              unit: "percentage"
+              chart_type: stacked
+              dimensions:
+                - name: execution
+                - name: GC
+            - name: puppet.fdopen
+              description: File Descriptors
+              unit: "descriptors"
+              chart_type: line
+              dimensions:
+                - name: used

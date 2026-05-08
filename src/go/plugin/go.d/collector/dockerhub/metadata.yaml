@@ -1,0 +1,228 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-dockerhub
+      plugin_name: go.d.plugin
+      module_name: dockerhub
+      monitored_instance:
+        name: Docker Hub repository
+        link: https://hub.docker.com/
+        icon_filename: docker.svg
+        categories:
+          - data-collection.containers-and-vms
+      keywords:
+        - dockerhub
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector keeps track of DockerHub repositories statistics such as the number of stars, pulls, current status, and more.
+        method_description: ""
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: ""
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: go.d/dockerhub.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 5
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: repositories
+              description: List of Docker Hub repositories to monitor.
+              default_value: ""
+              required: true
+              group: Target
+            - name: url
+              description: DockerHub repositories endpoint URL
+              default_value: https://hub.docker.com/v2/repositories
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 5
+              required: false
+              group: Target
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: "GET"
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              folding:
+                enabled: false
+              description: A basic example configuration.
+              config: |
+                jobs:
+                  - name: dockerhub
+                    repositories:
+                      - 'user1/name1'
+                      - 'user2/name2'
+                      - 'user3/name3'
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: These metrics refer to the entire monitored application.
+          labels: []
+          metrics:
+            - name: dockerhub.pulls_sum
+              description: Pulls Summary
+              unit: pulls
+              chart_type: line
+              dimensions:
+                - name: sum
+            - name: dockerhub.pulls
+              description: Pulls
+              unit: pulls
+              chart_type: stacked
+              dimensions:
+                - name: a dimension per repository
+            - name: dockerhub.pulls_rate
+              description: Pulls Rate
+              unit: pulls/s
+              chart_type: stacked
+              dimensions:
+                - name: a dimension per repository
+            - name: dockerhub.stars
+              description: Stars
+              unit: stars
+              chart_type: stacked
+              dimensions:
+                - name: a dimension per repository
+            - name: dockerhub.status
+              description: Current Status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: a dimension per repository
+            - name: dockerhub.last_updated
+              description: Time Since Last Updated
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: a dimension per repository

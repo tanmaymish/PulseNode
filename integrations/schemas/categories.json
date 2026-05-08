@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "title": "Category information for integrations.",
+  "items": {
+    "$ref": "#/$defs/category"
+  },
+  "$defs": {
+    "category": {
+      "type": "object",
+      "description": "An entry for a single category.",
+      "properties": {
+        "id": {
+          "$ref": "./shared.json#/$defs/id"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The display name for the category."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the category."
+        },
+        "collector_default": {
+          "type": "boolean",
+          "description": "Indicates that the category should be added to collector integrations that list no categories."
+        },
+        "children": {
+          "type": "array",
+          "description": "A list of categories that are children of this category.",
+          "items": {
+            "$ref": "#/$defs/category"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "children"
+      ]
+    }
+  }
+}

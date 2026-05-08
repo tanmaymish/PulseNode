@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package rabbitmq
+
+import (
+	"fmt"
+	"maps"
+
+	"github.com/netdata/netdata/go/plugins/pkg/stm"
+	"github.com/netdata/netdata/go/plugins/pkg/web"
+)
+
+func (c *Collector) collectOverview(mx map[string]int64) error {
+	req, err := web.NewHTTPRequestWithPath(c.RequestConfig, urlPathAPIOverview)
+	if err != nil {
+		return fmt.Errorf("failed to create overview stats request: %w", err)
+	}
+
+	var resp apiOverviewResp
+
+	if err := c.webClient().RequestJSON(req, &resp); err != nil {
+		return err
+	}
+
+	maps.Copy(mx, stm.ToMap(resp))
+
+	return nil
+}

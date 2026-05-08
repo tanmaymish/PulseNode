@@ -1,0 +1,687 @@
+{
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SQL collector configuration.",
+    "type": "object",
+    "properties": {
+      "update_every": {
+        "title": "Update every",
+        "description": "How often to collect metrics from the database, in seconds.",
+        "type": "integer",
+        "minimum": 1,
+        "default": 1
+      },
+      "autodetection_retry": {
+        "title": "Detection retry",
+        "description": "How often Netdata retries failed automatic detection jobs, in seconds. Set to 0 to disable retries.",
+        "type": "integer",
+        "minimum": 0,
+        "default": 0
+      },
+      "driver": {
+        "title": "Driver",
+        "description": "SQL driver / database engine to use. Supported values: `mysql` (MySQL/MariaDB), `pgx` (PostgreSQL), `oracle` (OracleDB), `sqlserver` (Microsoft SQL Server), `azuresql` (Microsoft SQL Server with Azure AD).",
+        "type": "string",
+        "enum": [
+          "azuresql",
+          "mysql",
+          "pgx",
+          "oracle",
+          "sqlserver"
+        ],
+        "default": "mysql"
+      },
+      "dsn": {
+        "title": "DSN",
+        "description": "Database connection string (DSN). The format depends on the selected driver.",
+        "type": "string"
+      },
+      "timeout": {
+        "title": "Timeout",
+        "description": "Maximum time allowed for a single query and connection check, in seconds.",
+        "type": "number",
+        "minimum": 0,
+        "default": 5
+      },
+      "cloud_auth": {
+        "title": "Cloud auth",
+        "description": "Optional cloud authentication settings. `azure_ad` is supported when driver is `pgx`, `sqlserver`, or `azuresql`.",
+        "type": "object",
+        "properties": {
+          "provider": {
+            "title": "Provider",
+            "description": "Cloud auth provider. Use `none` to disable cloud authentication.",
+            "type": "string",
+            "enum": [
+              "none",
+              "azure_ad"
+            ],
+            "default": "none"
+          }
+        },
+        "dependencies": {
+          "provider": {
+            "oneOf": [
+              {
+                "properties": {
+                  "provider": {
+                    "const": "none"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "provider": {
+                    "const": "azure_ad"
+                  },
+                  "azure_ad": {
+                    "title": "Azure AD",
+                    "description": "Microsoft Entra (Azure AD) settings used when provider is `azure_ad`.",
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "title": "Mode",
+                        "description": "Azure AD credential mode.",
+                        "type": "string",
+                        "enum": [
+                          "service_principal",
+                          "managed_identity",
+                          "default"
+                        ],
+                        "default": "default"
+                      }
+                    },
+                    "dependencies": {
+                      "mode": {
+                        "oneOf": [
+                          {
+                            "properties": {
+                              "mode": {
+                                "const": "service_principal"
+                              },
+                              "mode_service_principal": {
+                                "title": "Service Principal",
+                                "description": "Service principal settings used when mode is `service_principal`.",
+                                "type": "object",
+                                "properties": {
+                                  "tenant_id": {
+                                    "title": "Tenant ID",
+                                    "description": "Azure tenant ID.",
+                                    "type": "string"
+                                  },
+                                  "client_id": {
+                                    "title": "Client ID",
+                                    "description": "Service principal client ID.",
+                                    "type": "string"
+                                  },
+                                  "client_secret": {
+                                    "title": "Client Secret",
+                                    "description": "Service principal client secret.",
+                                    "type": "string",
+                                    "sensitive": true
+                                  }
+                                },
+                                "required": [
+                                  "tenant_id",
+                                  "client_id",
+                                  "client_secret"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "mode_service_principal"
+                            ]
+                          },
+                          {
+                            "properties": {
+                              "mode": {
+                                "const": "managed_identity"
+                              },
+                              "mode_managed_identity": {
+                                "title": "Managed Identity",
+                                "description": "Managed identity settings used when mode is `managed_identity`.",
+                                "type": "object",
+                                "properties": {
+                                  "client_id": {
+                                    "title": "Client ID",
+                                    "description": "Optional client ID of a user-assigned managed identity.",
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "properties": {
+                              "mode": {
+                                "const": "default"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ]
+                  }
+                },
+                "required": [
+                  "azure_ad"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "static_labels": {
+        "title": "Static labels",
+        "description": "Key/value labels automatically added to every chart created by this job (for example `env=prod`, `region=eu-west`).",
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "queries": {
+        "title": "Reusable queries",
+        "description": "Optional list of reusable SQL queries that metric blocks can reference via `query_ref` to avoid repeating SQL text.",
+        "type": "array",
+        "items": {
+          "title": "Query",
+          "type": "object",
+          "properties": {
+            "id": {
+              "title": "ID",
+              "description": "Unique query identifier referenced from metric blocks using `query_ref` within this job.",
+              "type": "string"
+            },
+            "query": {
+              "title": "Query",
+              "description": "SQL statement text executed when this query is referenced.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "query"
+          ]
+        }
+      },
+      "metrics": {
+        "title": "Metric blocks",
+        "description": "List of metric blocks. Each block runs one query and maps its result set into one or more Netdata charts.",
+        "type": "array",
+        "items": {
+          "title": "Metric block",
+          "type": "object",
+          "properties": {
+            "id": {
+              "title": "ID",
+              "description": "Metric block identifier. Must be unique within this job.",
+              "type": "string"
+            },
+            "query_ref": {
+              "title": "Query ref",
+              "description": "Reference to a reusable query defined in `queries`. Exactly one of `query_ref` or `query` must be set.",
+              "type": "string"
+            },
+            "query": {
+              "title": "Inline query",
+              "description": "Inline SQL statement for this metric block. Exactly one of `query_ref` or `query` must be set.",
+              "type": "string"
+            },
+            "mode": {
+              "title": "Mode",
+              "description": "How to interpret the result rows. `columns` treats selected columns as metrics. `kv` treats one column as metric name (key) and another as its value.",
+              "type": "string",
+              "enum": [
+                "columns",
+                "kv"
+              ],
+              "default": "columns"
+            },
+            "labels_from_row": {
+              "title": "Labels from row",
+              "description": "Optional labels derived from result columns. Each unique combination of label values produces a separate chart instance.",
+              "type": "array",
+              "items": {
+                "title": "Label from row",
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "title": "Source column",
+                    "description": "Name of the result column whose value will be used as the label value.",
+                    "type": "string"
+                  },
+                  "name": {
+                    "title": "Label key",
+                    "description": "Label key/name added to the chart (for example `db`, `schema`, `table`).",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source",
+                  "name"
+                ]
+              }
+            },
+            "charts": {
+              "title": "Charts",
+              "description": "One or more Netdata charts generated from this metric block.",
+              "type": "array",
+              "items": {
+                "title": "Chart",
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "title": "Title",
+                    "description": "Human-friendly chart title shown in Netdata dashboards.",
+                    "type": "string"
+                  },
+                  "context": {
+                    "title": "Context",
+                    "description": "Base metric context name for the chart. The collector will prefix it as `sql.<driver>_<context>` to form the full Netdata context. Contexts define the metric namespace, control alert templates, and group charts across jobs and nodes.",
+                    "type": "string"
+                  },
+                  "family": {
+                    "title": "Family",
+                    "description": "Chart family used to organize charts in the Netdata UI. You can use '/' to create hierarchical grouping levels (e.g. `Database/Connections/Active`). Each level becomes a nested section in the dashboard.",
+                    "type": "string"
+                  },
+                  "type": {
+                    "title": "Type",
+                    "description": "Visual type of the chart.",
+                    "type": "string",
+                    "enum": [
+                      "line",
+                      "stacked",
+                      "area"
+                    ],
+                    "default": "line"
+                  },
+                  "units": {
+                    "title": "Units",
+                    "description": "Unit label for all dimensions in this chart (for example `queries/s`, `bytes`, `connections`).",
+                    "type": "string"
+                  },
+                  "algorithm": {
+                    "title": "Algorithm",
+                    "description": "How Netdata interprets values: `absolute` for values that are already final, `incremental` for monotonically increasing counters.",
+                    "type": "string",
+                    "enum": [
+                      "absolute",
+                      "incremental"
+                    ],
+                    "default": "absolute"
+                  },
+                  "dims": {
+                    "title": "Dimensions",
+                    "description": "Definitions of the metrics (dimensions) that belong to this chart.",
+                    "type": "array",
+                    "items": {
+                      "title": "Dimension",
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "title": "Name",
+                          "description": "Dimension identifier, unique within this chart. Also used as the legend name.",
+                          "type": "string"
+                        },
+                        "source": {
+                          "title": "Source",
+                          "description": "In `columns` mode: the numeric result column to read. In `kv` mode: the key name that must match a value in `kv_mode.name_col`.",
+                          "type": "string"
+                        },
+                        "status_when": {
+                          "title": "Status when",
+                          "description": "Optional condition that turns this dimension into a boolean 0/1 status metric. The dimension is 1 if any row matches the condition, otherwise 0.",
+                          "type": "object",
+                          "properties": {
+                            "equals": {
+                              "title": "Equals",
+                              "description": "Use 1 when the value is exactly equal to this literal, otherwise 0. Only one of `equals`, `in`, or `match` may be set.",
+                              "type": "string"
+                            },
+                            "in": {
+                              "title": "In",
+                              "description": "Use 1 when the value is equal to any element in this list, otherwise 0. Only one of `equals`, `in`, or `match` may be set.",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "match": {
+                              "title": "Match (regex)",
+                              "description": "Use 1 when the value matches this regular expression, otherwise 0. Only one of `equals`, `in`, or `match` may be set.",
+                              "type": "string"
+                            }
+                          }
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "source"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "title",
+                  "context",
+                  "family",
+                  "units",
+                  "dims"
+                ]
+              }
+            }
+          },
+          "required": [
+            "id",
+            "mode",
+            "charts"
+          ],
+          "dependencies": {
+            "mode": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "mode": {
+                      "const": "columns"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "mode": {
+                      "const": "kv"
+                    },
+                    "kv_mode": {
+                      "title": "KV mode",
+                      "description": "Configuration for `kv` mode that tells the collector which columns hold the key and value.",
+                      "type": "object",
+                      "properties": {
+                        "name_col": {
+                          "title": "Name column",
+                          "description": "Name of the result column that contains metric keys (for example `state`).",
+                          "type": "string"
+                        },
+                        "value_col": {
+                          "title": "Value column",
+                          "description": "Name of the result column that contains numeric metric values for each key.",
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "kv_mode"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "function_only": {
+        "title": "Function Only",
+        "description": "Set to true if this job only provides functions (no metrics). When enabled, metrics configuration is ignored and no charts are created.",
+        "type": "boolean",
+        "default": false
+      },
+      "functions": {
+        "title": "Functions",
+        "description": "SQL functions that expose query results as table views in the Netdata UI.",
+        "type": "array",
+        "items": {
+          "title": "Function",
+          "type": "object",
+          "properties": {
+            "id": {
+              "title": "ID",
+              "description": "Unique identifier for this function.",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "description": "Display name shown in the UI. Auto-derived from ID if empty.",
+              "type": "string"
+            },
+            "description": {
+              "title": "Description",
+              "description": "Help text shown in the UI.",
+              "type": "string"
+            },
+            "query": {
+              "title": "Query",
+              "description": "SQL query to execute when this function is called.",
+              "type": "string"
+            },
+            "timeout": {
+              "title": "Timeout",
+              "description": "Query timeout in seconds. Uses collector default if not set.",
+              "type": "number",
+              "minimum": 0
+            },
+            "limit": {
+              "title": "Row Limit",
+              "description": "Maximum rows to return.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000,
+              "default": 100
+            },
+            "default_sort": {
+              "title": "Default Sort Column",
+              "description": "Column name for initial sort order.",
+              "type": "string"
+            },
+            "default_sort_desc": {
+              "title": "Sort Descending",
+              "description": "Sort in descending order by default.",
+              "type": "boolean",
+              "default": true
+            },
+            "columns": {
+              "title": "Column Overrides",
+              "description": "Override auto-detected column metadata.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "title": "Type",
+                    "description": "Column data type.",
+                    "type": "string",
+                    "enum": ["string", "integer", "float", "boolean", "duration", "timestamp"]
+                  },
+                  "units": {
+                    "title": "Units",
+                    "description": "Unit label for the column (e.g., milliseconds, bytes).",
+                    "type": "string"
+                  },
+                  "tooltip": {
+                    "title": "Tooltip",
+                    "description": "Hover text shown in the UI.",
+                    "type": "string"
+                  },
+                  "visible": {
+                    "title": "Visible",
+                    "description": "Show column by default.",
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "sortable": {
+                    "title": "Sortable",
+                    "description": "Allow sorting by this column.",
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          },
+          "required": ["id", "query"]
+        }
+      },
+      "vnode": {
+        "title": "Vnode",
+        "description": "Name of the Virtual Node this job should send its metrics to. Leave empty to use the local node.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "driver",
+      "dsn"
+    ]
+  },
+  "uiSchema": {
+    "uiOptions": {
+      "fullPage": true
+    },
+    "ui:flavour": "tabs",
+    "ui:options": {
+      "tabs": [
+        {
+          "title": "Base",
+          "fields": [
+            "update_every",
+            "autodetection_retry",
+            "driver",
+            "dsn",
+            "timeout",
+            "vnode"
+          ]
+        },
+        {
+          "title": "Cloud Auth",
+          "fields": [
+            "cloud_auth"
+          ]
+        },
+        {
+          "title": "Metrics",
+          "fields": [
+            "metrics"
+          ]
+        },
+        {
+          "title": "Reusable Queries",
+          "fields": [
+            "queries"
+          ]
+        },
+        {
+          "title": "Static Labels",
+          "fields": [
+            "static_labels"
+          ]
+        },
+        {
+          "title": "Functions",
+          "fields": [
+            "function_only",
+            "functions"
+          ]
+        }
+      ]
+    },
+    "vnode": {
+      "ui:placeholder": "To use this option, first create a Virtual Node and then reference its name here."
+    },
+    "autodetection_retry": {
+      "ui:help": "This option determines how frequently (in seconds) Netdata will retry data collection jobs that failed initially; setting it to 0 disables this retry mechanism entirely."
+    },
+    "driver": {
+      "ui:widget": "radio",
+      "ui:options": {
+        "inline": true
+      }
+    },
+    "cloud_auth": {
+      "provider": {
+        "ui:widget": "radio",
+        "ui:options": {
+          "inline": true
+        }
+      },
+      "azure_ad": {
+        "mode": {
+          "ui:widget": "radio",
+          "ui:options": {
+            "inline": true
+          },
+          "ui:help": "Choose how Netdata gets Azure credentials.\n\n- `service_principal`: Use an Azure app / service principal. Requires `tenant_id`, `client_id`, and `client_secret` in `mode_service_principal`.\n- `managed_identity`: Use the managed identity attached to the Azure resource running Netdata. Set `mode_managed_identity.client_id` only for a user-assigned identity.\n- `default`: Use the Azure SDK `DefaultAzureCredential` chain. This automatically tries available Azure credential sources, such as environment-based credentials, managed identity, and local developer credentials.\n\nUse `service_principal` for explicit app credentials. Use `managed_identity` when Netdata runs on an Azure resource with an attached identity. Use `default` when you want Azure SDK auto-discovery or local development convenience."
+        },
+        "mode_service_principal": {
+          "client_secret": {
+            "ui:widget": "password"
+          }
+        }
+      }
+    },
+    "dsn": {
+      "ui:placeholder": "Enter the database connection string",
+      "ui:help": "**DSN format depends on the selected driver.**\n\n### MySQL / MariaDB\nFormat: `user:password@tcp(host:port)/dbname?param1=value1&paramN=valueN`\nExample:\n```\nroot:pass@tcp(127.0.0.1:3306)/\n```\n[MySQL DSN documentation](https://github.com/go-sql-driver/mysql#dsn-data-source-name)\n\n### PostgreSQL\nFormats: `postgresql://user:password@host:5432/dbname?param1=value1&paramN=valueN`\nExample:\n```\npostgresql://user:pass@localhost:5432/mydb\n```\n[PostgreSQL DSN documentation](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING-URIS)\n\n### Oracle\nFormat: `oracle://username:password@host:port/service?param1=value1&paramN=valueN`\nExample:\n```\noracle://scott:tiger@db.example.com:1521/ORCLPDB1?ssl=off\n```\n\n### SQL Server / Azure SQL\nFormat: `sqlserver://username:password@host:port?database=dbname&param=value`\nExample:\n```\nsqlserver://sa:myStrong(!)Password@localhost:1433?database=master&connection+timeout=30\n```\n[SQL Server driver DSN documentation](https://github.com/microsoft/go-mssqldb#connection-parameters-and-dsn)\n\nWhen `cloud_auth.provider` is `azure_ad` with SQL Server drivers, keep DSN host/database settings and configure authentication in `cloud_auth.azure_ad`."
+    },
+    "static_labels": {
+      "ui:help": "Optional key/value labels added to every chart created by this job (for example env=prod, role=primary)."
+    },
+    "queries": {
+      "items": {
+        "query": {
+          "ui:widget": "textarea"
+        }
+      }
+    },
+    "metrics": {
+      "items": {
+        "ui:order": [
+          "id",
+          "query_ref",
+          "query",
+          "mode",
+          "kv_mode",
+          "labels_from_row",
+          "charts"
+        ],
+        "mode": {
+          "ui:widget": "radio",
+          "ui:options": {
+            "inline": true
+          }
+        },
+        "query": {
+          "ui:widget": "textarea"
+        },
+        "charts": {
+          "items": {
+            "type": {
+              "ui:widget": "radio",
+              "ui:options": {
+                "inline": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "functions": {
+      "items": {
+        "ui:order": [
+          "id",
+          "name",
+          "description",
+          "query",
+          "timeout",
+          "limit",
+          "default_sort",
+          "default_sort_desc",
+          "columns"
+        ],
+        "query": {
+          "ui:widget": "textarea"
+        }
+      }
+    }
+  }
+}

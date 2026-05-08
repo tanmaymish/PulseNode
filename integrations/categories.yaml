@@ -1,0 +1,85 @@
+- id: deploy
+  name: Deploy
+  description: ""
+  children:
+    - id: deploy.operating-systems
+      name: Operating Systems
+      description: ""
+      children: []
+    - id: deploy.docker-kubernetes
+      name: Docker & Kubernetes
+      description: ""
+      children: []
+    - id: deploy.provisioning-systems
+      name: Provisioning Systems
+      description: ""
+      children: []
+- id: data-collection
+  name: Data Collection
+  description: ""
+  children:
+    - id: data-collection.databases
+      name: Databases
+      description: ""
+      children: []
+    - id: data-collection.web-servers-and-proxies
+      name: Web Servers and Proxies
+      description: ""
+      children: []
+    - id: data-collection.containers-and-vms
+      name: Containers and VMs
+      description: ""
+      children: []
+    - id: data-collection.operating-systems
+      name: Operating Systems
+      description: ""
+      children: []
+    - id: data-collection.networking
+      name: Networking
+      description: ""
+      children: []
+    - id: data-collection.cloud-and-devops
+      name: Cloud and DevOps
+      description: ""
+      children: []
+    - id: data-collection.hardware-and-sensors
+      name: Hardware and Sensors
+      description: ""
+      children: []
+    - id: data-collection.applications
+      name: Applications
+      description: ""
+      collector_default: true
+      children: []
+    - id: data-collection.storage
+      name: Storage and Filesystems
+      description: ""
+      children: []
+    - id: data-collection.synthetic-testing
+      name: Synthetic Testing
+      description: ""
+      children: []
+- id: logs
+  name: Logs
+  description: "Monitoring logs on your infrastructure"
+  children: []
+- id: export
+  name: exporters
+  description: "Exporter Integrations"
+  children: []
+- id: notify
+  name: notifications
+  description: "Notification Integrations"
+  children:
+    - id: notify.agent
+      name: Agent Dispatched Notifications
+      description: ""
+      children: []
+    - id: notify.cloud
+      name: Centralized Cloud Notifications
+      description: ""
+      children: []
+- id: auth
+  name: authentication
+  description: "Authentication & Authorization"
+  children: []

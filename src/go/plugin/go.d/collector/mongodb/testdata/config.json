@@ -1,0 +1,22 @@
+{
+  "vnode": "ok",
+  "update_every": 1,
+  "autodetection_retry": 123,
+  "uri": "ok",
+  "timeout": 123.123,
+  "databases": {
+    "includes": [
+      "ok"
+    ],
+    "excludes": [
+      "ok"
+    ]
+  },
+  "functions": {
+    "top_queries": {
+      "disabled": true,
+      "timeout": 123.123,
+      "limit": 123
+    }
+  }
+}

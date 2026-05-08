@@ -1,0 +1,274 @@
+# Generic network interfaces abstract profile.
+# MIB: IF-MIB
+
+metrics:
+  - MIB: IF-MIB
+    symbol:
+      OID: 1.3.6.1.2.1.2.1.0
+      name: ifNumber
+      chart_meta:
+        description: Number of network interfaces regardless of their current state present on this system
+        family: 'Network/Interface/Count'
+        unit: "{interface}"
+
+  # =========================
+  # IF-MIB::ifTable (32-bit)
+  # =========================
+  - MIB: IF-MIB
+    table:
+      OID: 1.3.6.1.2.1.2.2
+      name: ifTable
+    symbols:
+      # 32-bit octets (fallback for traffic)
+      #      - { OID: 1.3.6.1.2.1.2.2.1.10, name: _ifInOctets, scale_factor: 8 }
+      #      - { OID: 1.3.6.1.2.1.2.2.1.16, name: _ifOutOctets, scale_factor: 8 }
+      # 32-bit unicast packets (fallback for unicast packet rate)
+      #      - { OID: 1.3.6.1.2.1.2.2.1.11, name: _ifInUcastPkts }
+      #      - { OID: 1.3.6.1.2.1.2.2.1.17, name: _ifOutUcastPkts }
+      # 32-bit only
+      - { OID: 1.3.6.1.2.1.2.2.1.14, name: _ifInErrors }
+      - { OID: 1.3.6.1.2.1.2.2.1.20, name: _ifOutErrors }
+      - { OID: 1.3.6.1.2.1.2.2.1.13, name: _ifInDiscards }
+      - { OID: 1.3.6.1.2.1.2.2.1.19, name: _ifOutDiscards }
+
+      - OID: 1.3.6.1.2.1.2.2.1.7
+        name: ifAdminStatus
+        chart_meta:
+          description: Current administrative state of the interface
+          family: 'Network/Interface/Status/Admin'
+          unit: "{status}"
+        mapping:
+          1: up
+          2: down
+          3: testing
+      - OID: 1.3.6.1.2.1.2.2.1.8
+        name: ifOperStatus
+        chart_meta:
+          description: Current operational state of the interface
+          family: 'Network/Interface/Status/Operational'
+          unit: "{status}"
+        mapping:
+          1: up
+          2: down
+          3: testing
+          4: unknown
+          5: dormant
+          6: notPresent
+          7: lowerLayerDown
+    metric_tags:
+      - tag: interface
+        table: ifXTable
+        symbol:
+          OID: 1.3.6.1.2.1.31.1.1.1.1
+          name: ifName
+      - tag: interface
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.2
+          name: ifDescr
+      - tag: _if_type
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.3
+          name: ifType
+        mapping_ref: ifType
+      - tag: _if_type_group
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.3
+          name: ifType
+        mapping_ref: ifTypeGroup
+
+  # =========================
+  # IF-MIB::ifXTable (64-bit + extras)
+  # =========================
+  - MIB: IF-MIB
+    table:
+      OID: 1.3.6.1.2.1.31.1.1
+      name: ifXTable
+    symbols:
+      - { OID: 1.3.6.1.2.1.31.1.1.1.6,  name: _ifHCInOctets, scale_factor: 8 }
+      - { OID: 1.3.6.1.2.1.31.1.1.1.10,  name: _ifHCOutOctets, scale_factor: 8 }
+      - { OID: 1.3.6.1.2.1.31.1.1.1.7,  name: _ifHCInUcastPkts }
+      - { OID: 1.3.6.1.2.1.31.1.1.1.11,  name: _ifHCOutUcastPkts }
+      - { OID: 1.3.6.1.2.1.31.1.1.1.8,  name: _ifHCInMulticastPkts }
+      - { OID: 1.3.6.1.2.1.31.1.1.1.12, name: _ifHCOutMulticastPkts }
+      - { OID: 1.3.6.1.2.1.31.1.1.1.9,  name: _ifHCInBroadcastPkts }
+      - { OID: 1.3.6.1.2.1.31.1.1.1.13, name: _ifHCOutBroadcastPkts }
+
+      - OID: 1.3.6.1.2.1.31.1.1.1.15
+        name: ifHighSpeed
+        chart_meta:
+          description: Estimate of the interface's current bandwidth
+          family: 'Network/Interface/Speed'
+          unit: "bit/s"
+        scale_factor: 1000000 # Megabits => bits
+    metric_tags:
+      - tag: interface
+        symbol:
+          OID: 1.3.6.1.2.1.31.1.1.1.1
+          name: ifName
+      - tag: interface
+        table: ifTable
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.2
+          name: ifDescr
+      - tag: _if_type
+        table: ifTable
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.3
+          name: ifType
+        mapping_ref: ifType
+      - tag: _if_type_group
+        table: ifTable
+        symbol:
+          OID: 1.3.6.1.2.1.2.2.1.3
+          name: ifType
+        mapping_ref: ifTypeGroup
+
+virtual_metrics:
+  # ======================
+  # TOTALS (all interfaces)
+  # ======================
+
+  # Traffic total (64-bit HC only)
+  - name: ifTotalTraffic
+    sources:
+      - { metric: _ifHCInOctets,  table: ifXTable, as: in }
+      - { metric: _ifHCOutOctets, table: ifXTable, as: out }
+    chart_meta:
+      description: Total traffic across all interfaces
+      family: 'Network/Total/Traffic'
+      unit: "bit/s"
+
+  # Unicast packets total (64-bit HC only)
+  - name: ifTotalPacketsUcast
+    sources:
+      - { metric: _ifHCInUcastPkts,  table: ifXTable, as: in }
+      - { metric: _ifHCOutUcastPkts, table: ifXTable, as: out }
+    chart_meta:
+      description: Total unicast packets across all interfaces
+      family: 'Network/Total/Packet/Unicast'
+      unit: "{packet}/s"
+
+  # Multicast packets total (HC only from ifXTable)
+  - name: ifTotalPacketsMulticast
+    sources:
+      - { metric: _ifHCInMulticastPkts,  table: ifXTable, as: in }
+      - { metric: _ifHCOutMulticastPkts, table: ifXTable, as: out }
+    chart_meta:
+      description: Total multicast packets across all interfaces
+      family: 'Network/Total/Packet/Multicast'
+      unit: "{packet}/s"
+
+  # Broadcast packets total (HC only from ifXTable)
+  - name: ifTotalPacketsBroadcast
+    sources:
+      - { metric: _ifHCInBroadcastPkts,  table: ifXTable, as: in }
+      - { metric: _ifHCOutBroadcastPkts, table: ifXTable, as: out }
+    chart_meta:
+      description: Total broadcast packets across all interfaces
+      family: 'Network/Total/Packet/Broadcast'
+      unit: "{packet}/s"
+
+  # Errors total (ifTable only)
+  - name: ifTotalErrors
+    sources:
+      - { metric: _ifInErrors,  table: ifTable, as: in }
+      - { metric: _ifOutErrors, table: ifTable, as: out }
+    chart_meta:
+      description: Total packets with errors across all interfaces
+      family: 'Network/Total/Error'
+      unit: "{error}/s"
+
+  # Discards total (ifTable only)
+  - name: ifTotalDiscards
+    sources:
+      - { metric: _ifInDiscards,  table: ifTable, as: in }
+      - { metric: _ifOutDiscards, table: ifTable, as: out }
+    chart_meta:
+      description: Total packets discarded across all interfaces
+      family: 'Network/Total/Discard'
+      unit: "{discard}/s"
+
+  # Operational status total
+  - name: ifTotalOperStatus
+    sources:
+      - { metric: ifOperStatus, table: ifTable }
+    chart_meta:
+      description: Total count of interfaces by operational status
+      family: 'Network/Total/Interface/Status'
+      unit: "{status}"
+
+  # =========================
+  # PER INTERFACE (per_row)
+  # =========================
+
+  # Traffic per interface (64-bit HC only)
+  - name: ifTraffic
+    per_row: true
+    group_by: ["interface"]
+    sources:
+      - { metric: _ifHCInOctets,  table: ifXTable, as: in }
+      - { metric: _ifHCOutOctets, table: ifXTable, as: out }
+    chart_meta:
+      description: Traffic
+      family: 'Network/Interface/Traffic/Total'
+      unit: "bit/s"
+
+  # Unicast packets per interface (64-bit HC only)
+  - name: ifPacketsUcast
+    per_row: true
+    group_by: ["interface"]
+    sources:
+      - { metric: _ifHCInUcastPkts,  table: ifXTable, as: in }
+      - { metric: _ifHCOutUcastPkts, table: ifXTable, as: out }
+    chart_meta:
+      description: Unicast packets
+      family: 'Network/Interface/Packet/Unicast'
+      unit: "{packet}/s"
+
+  # Multicast packets per interface
+  - name: ifPacketsMulticast
+    per_row: true
+    group_by: ["interface"]
+    sources:
+      - { metric: _ifHCInMulticastPkts,  table: ifXTable, as: in }
+      - { metric: _ifHCOutMulticastPkts, table: ifXTable, as: out }
+    chart_meta:
+      description: Multicast packets
+      family: 'Network/Interface/Packet/Multicast'
+      unit: "{packet}/s"
+
+  # Broadcast packets per interface
+  - name: ifPacketsBroadcast
+    per_row: true
+    group_by: ["interface"]
+    sources:
+      - { metric: _ifHCInBroadcastPkts,  table: ifXTable, as: in }
+      - { metric: _ifHCOutBroadcastPkts, table: ifXTable, as: out }
+    chart_meta:
+      description: Broadcast packets
+      family: 'Network/Interface/Packet/Broadcast'
+      unit: "{packet}/s"
+
+  # Errors per interface (ifTable only)
+  - name: ifErrors
+    per_row: true
+    group_by: ["interface"]
+    sources:
+      - { metric: _ifInErrors,  table: ifTable, as: in }
+      - { metric: _ifOutErrors, table: ifTable, as: out }
+    chart_meta:
+      description: Packets with errors
+      family: 'Network/Interface/Error/Total'
+      unit: "{error}/s"
+
+  # Discards per interface (ifTable only)
+  - name: ifDiscards
+    per_row: true
+    group_by: ["interface"]
+    sources:
+      - { metric: _ifInDiscards,  table: ifTable, as: in }
+      - { metric: _ifOutDiscards, table: ifTable, as: out }
+    chart_meta:
+      description: Packets discarded
+      family: 'Network/Interface/Discard'
+      unit: "{discard}/s"

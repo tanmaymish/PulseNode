@@ -1,0 +1,965 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-cockroachdb
+      plugin_name: go.d.plugin
+      module_name: cockroachdb
+      monitored_instance:
+        name: CockroachDB
+        link: https://www.cockroachlabs.com/
+        icon_filename: cockroachdb.svg
+        categories:
+          - data-collection.databases
+      keywords:
+        - cockroachdb
+        - databases
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors CockroachDB servers.
+        method_description: |
+          It scrapes Prometheus metrics from the CockroachDB `/_status/vars` endpoint.
+
+          It also provides `top-queries` and `running-queries` functions using SQL statement statistics (`crdb_internal.cluster_statement_statistics`) and the `SHOW CLUSTER STATEMENTS` command.
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: |
+          The `top-queries` and `running-queries` functions require:
+
+          - A SQL user with `VIEWACTIVITY` or `VIEWACTIVITYREDACTED` privileges.
+          - Access to `crdb_internal.cluster_statement_statistics` (may require `SET allow_unsafe_internals = on` on newer versions).
+      default_behavior:
+        auto_detection:
+          description: ""
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: go.d/cockroachdb.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 10
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: http://127.0.0.1:8080/_status/vars
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: "GET"
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: functions.dsn
+              description: SQL DSN (required for query functions).
+              default_value: ""
+              required: false
+              group: Functions
+
+            - name: functions.top_queries.disabled
+              description: Disable the [top-queries](#top-queries) function.
+              default_value: false
+              required: false
+              group: Functions
+            - name: functions.top_queries.timeout
+              description: Query timeout (seconds). Uses collector timeout if not set.
+              default_value: ""
+              required: false
+              group: Functions
+            - name: functions.top_queries.limit
+              description: Maximum number of queries to return.
+              default_value: 500
+              required: false
+              group: Functions
+
+            - name: functions.running_queries.disabled
+              description: Disable the [running-queries](#running-queries) function.
+              default_value: false
+              required: false
+              group: Functions
+            - name: functions.running_queries.timeout
+              description: Query timeout (seconds). Uses collector timeout if not set.
+              default_value: ""
+              required: false
+              group: Functions
+            - name: functions.running_queries.limit
+              description: Maximum number of queries to return.
+              default_value: 500
+              required: false
+              group: Functions
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              description: An example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080/_status/vars
+            - name: Top queries
+              description: Enable SQL query functions.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080/_status/vars
+                    functions:
+                      dsn: postgres://root@127.0.0.1:26257/defaultdb?sslmode=disable
+            - name: HTTP authentication
+              description: Local server with basic HTTP authentication.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080/_status/vars
+                    username: username
+                    password: password
+            - name: HTTPS with self-signed certificate
+              description: CockroachDB with enabled HTTPS and self-signed certificate.
+              config: |
+                jobs:
+                  - name: local
+                    url: https://127.0.0.1:8080/_status/vars
+                    tls_skip_verify: yes
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080/_status/vars
+                
+                  - name: remote
+                    url: http://203.0.113.10:8080/_status/vars
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: cockroachdb_used_storage_capacity
+        metric: cockroachdb.storage_used_capacity_percentage
+        info: storage capacity utilization
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/cockroachdb.conf
+      - name: cockroachdb_used_usable_storage_capacity
+        metric: cockroachdb.storage_used_capacity_percentage
+        info: storage usable space utilization
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/cockroachdb.conf
+      - name: cockroachdb_unavailable_ranges
+        metric: cockroachdb.ranges_replication_problem
+        info: number of ranges with fewer live replicas than needed for quorum
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/cockroachdb.conf
+      - name: cockroachdb_underreplicated_ranges
+        metric: cockroachdb.ranges_replication_problem
+        info: number of ranges with fewer live replicas than the replication target
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/cockroachdb.conf
+      - name: cockroachdb_open_file_descriptors_limit
+        metric: cockroachdb.process_file_descriptors
+        info: "open file descriptors utilization (against softlimit)"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/cockroachdb.conf
+    functions:
+      description: |
+        This collector exposes real-time functions for interactive troubleshooting in the Live tab.
+      list:
+        - id: top-queries
+          name: Top Queries
+          description: |
+            Retrieves and aggregates SQL statement performance metrics from CockroachDB [crdb_internal.cluster_statement_statistics](https://www.cockroachlabs.com/docs/stable/crdb-internal#cluster_statement_statistics) table.
+
+            This function queries cluster-wide statement statistics grouped by fingerprint (normalized query pattern). It provides aggregated metrics including execution counts, timing breakdowns, and row operation statistics.
+
+            Use cases:
+            - Identify slow queries consuming the most total execution time
+            - Find frequently executed queries that may benefit from optimization
+            - Analyze row read/write patterns to detect inefficient queries
+
+            Query text is truncated at 4096 characters for display purposes.
+          parameters:
+            - id: __sort
+              name: Filter By
+              description: Select the primary sort column. Options include total time, executions, rows read, rows written, and more. Defaults to total time to focus on most resource-intensive queries.
+              type: select
+              required: true
+              default: totalTime
+              options: []
+          returns:
+            description: Aggregated SQL statement statistics grouped by fingerprint. Each row represents a unique query pattern with cumulative metrics across all executions.
+            columns:
+              - name: Fingerprint ID
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Unique hash identifier for the normalized query pattern. Queries with identical structure but different literal values share the same fingerprint."
+              - name: Query
+                type: string
+                unit: ""
+                description: "Normalized SQL statement text with literals replaced. Truncated to 4096 characters."
+              - name: Database
+                type: string
+                unit: ""
+                description: "Database name where the query was executed. Empty for queries without database context."
+              - name: Application
+                type: string
+                unit: ""
+                description: "Application name that executed the query. Useful for identifying query sources across services."
+              - name: Statement Type
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Type of SQL statement (SELECT, INSERT, UPDATE, DELETE, etc.)."
+              - name: Distributed
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Whether the query used DistSQL execution (true/false). Distributed queries span multiple nodes."
+              - name: Full Scan
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Whether the query performed a full table scan (true/false). Full scans may indicate missing indexes."
+              - name: Implicit Txn
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Whether the statement ran in an implicit transaction (true/false)."
+              - name: Vectorized
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Whether the query used vectorized execution (true/false). Vectorized execution improves performance for analytical queries."
+              - name: Executions
+                type: integer
+                unit: ""
+                description: "Total number of times this query pattern has been executed. High values indicate frequently run queries."
+              - name: Total Time
+                type: duration
+                unit: "milliseconds"
+                description: "Cumulative service latency across all executions (mean time × executions). High values indicate queries consuming significant cluster resources."
+              - name: Mean Time
+                type: duration
+                unit: "milliseconds"
+                description: "Average service latency per execution. Use this to compare typical performance across query patterns."
+              - name: Run Time
+                type: duration
+                unit: "milliseconds"
+                visibility: hidden
+                description: "Average time spent executing the query after planning. Excludes parse and plan time."
+              - name: Plan Time
+                type: duration
+                unit: "milliseconds"
+                visibility: hidden
+                description: "Average time spent generating the query execution plan. High values may indicate complex queries or stale statistics."
+              - name: Parse Time
+                type: duration
+                unit: "milliseconds"
+                visibility: hidden
+                description: "Average time spent parsing the SQL statement."
+              - name: Rows Read
+                type: integer
+                unit: ""
+                description: "Total rows read across all executions. High values relative to rows returned suggest missing indexes or inefficient scans."
+              - name: Rows Written
+                type: integer
+                unit: ""
+                description: "Total rows written across all executions. Indicates write workload for INSERT, UPDATE, DELETE statements."
+              - name: Rows Returned
+                type: integer
+                unit: ""
+                description: "Total rows returned to clients across all executions. Compare with rows read to assess query efficiency."
+              - name: Bytes Read
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total bytes read from storage across all executions. Indicates I/O load for the query pattern."
+              - name: Max Retries
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Maximum number of automatic retries observed for this query pattern. High values indicate transaction contention."
+          performance: |
+            Queries the `crdb_internal.cluster_statement_statistics` table which aggregates data across the cluster:<br/>• On busy clusters with high query throughput, this query may take longer<br/>• Default limit of 500 rows balances usefulness with performance
+          security: |
+            Query text may contain unmasked literal values including potentially sensitive data:<br/>• Personal information in WHERE clauses or INSERT values<br/>• Business data and internal identifiers<br/>• Access should be restricted to authorized personnel only
+          prerequisites:
+            list:
+              - title: Grant `VIEWACTIVITY` access to cluster statement stats
+                description: |
+                  The SQL user must have appropriate privileges to access statement statistics.
+
+                  1. Grant `VIEWACTIVITY` (shows full query text) or `VIEWACTIVITYREDACTED` (masks literals):
+
+                     ```sql
+                     GRANT SYSTEM VIEWACTIVITY TO netdata_user;
+                     -- OR for privacy:
+                     GRANT SYSTEM VIEWACTIVITYREDACTED TO netdata_user;
+                     ```
+
+                  2. On newer CockroachDB versions, access to `crdb_internal` may require:
+
+                     ```sql
+                     SET allow_unsafe_internals = on;
+                     ```
+
+                  :::info
+
+                  - The collector automatically sets `allow_unsafe_internals = on` for the session when querying `crdb_internal` tables (required on newer versions)
+                  - `VIEWACTIVITYREDACTED` replaces literal values with underscores for privacy
+                  - Statement statistics are collected by default but can be disabled via cluster settings
+
+                  :::
+          availability: |
+            Available when:<br/>• The collector has successfully connected to CockroachDB<br/>• The SQL user has `VIEWACTIVITY` or `VIEWACTIVITYREDACTED` privileges<br/>• Returns HTTP 503 if the SQL connection cannot be established<br/>• Returns HTTP 500 if the query fails<br/>• Returns HTTP 504 if the query times out
+          require_cloud: true
+        - id: running-queries
+          name: Running Queries
+          description: |
+            Retrieves currently executing SQL statements across the CockroachDB cluster using [SHOW CLUSTER STATEMENTS](https://www.cockroachlabs.com/docs/stable/show-statements).
+
+            This function provides a real-time snapshot of all active queries across all nodes in the cluster, including their execution phase, duration, and associated metadata.
+
+            Use cases:
+            - Identify long-running queries that may be blocking other operations
+            - Monitor active workload distribution across the cluster
+            - Debug stuck or slow queries in real-time
+
+            Query text is truncated at 4096 characters for display purposes.
+          parameters:
+            - id: __sort
+              name: Filter By
+              description: Select the primary sort column. Defaults to elapsed time to show longest-running queries first.
+              type: select
+              required: true
+              default: elapsedMs
+              options: []
+          returns:
+            description: Real-time snapshot of currently executing SQL statements across all cluster nodes. Each row represents a single active query.
+            columns:
+              - name: Query ID
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Unique identifier for this specific query execution. Can be used with CANCEL QUERY if needed."
+              - name: Query
+                type: string
+                unit: ""
+                description: "The SQL statement currently being executed. Truncated to 4096 characters."
+              - name: User
+                type: string
+                unit: ""
+                description: "Database user executing the query. Useful for identifying workload by user."
+              - name: Application
+                type: string
+                unit: ""
+                description: "Application name from the client connection. Helps identify which service is running the query."
+              - name: Client Address
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "IP address of the client connection. Useful for identifying query sources."
+              - name: Node ID
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "CockroachDB node currently executing the query. Helps identify workload distribution."
+              - name: Session ID
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Session identifier for the connection. Multiple queries may share a session."
+              - name: Phase
+                type: string
+                unit: ""
+                description: "Current execution phase (executing, preparing, etc.). Indicates query progress."
+              - name: Distributed
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Whether the query is using distributed execution across multiple nodes."
+              - name: Start Time
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Timestamp when the query started executing."
+              - name: Elapsed
+                type: duration
+                unit: "milliseconds"
+                description: "Time elapsed since query started. High values indicate long-running queries that may need investigation."
+          performance: |
+            Executes the `SHOW CLUSTER STATEMENTS` command which queries all nodes in the cluster:<br/>• Lightweight operation with minimal overhead<br/>• Returns only currently active queries, typically a small result set
+          security: |
+            Query text may contain unmasked literal values including potentially sensitive data:<br/>• Personal information in WHERE clauses or VALUES<br/>• Session tokens or credentials<br/>• Access should be restricted to authorized personnel only
+          prerequisites:
+            list:
+              - title: Grant `VIEWACTIVITY` access to system tables
+                description: |
+                  The SQL user must have appropriate privileges to view running statements.
+
+                  1. Grant `VIEWACTIVITY` (shows full query text) or `VIEWACTIVITYREDACTED` (masks literals):
+
+                     ```sql
+                     GRANT SYSTEM VIEWACTIVITY TO netdata_user;
+                     -- OR for privacy:
+                     GRANT SYSTEM VIEWACTIVITYREDACTED TO netdata_user;
+                     ```
+
+                     :::info
+
+                     - `SHOW CLUSTER STATEMENTS` shows queries across all nodes, not just the connected node
+                     - `VIEWACTIVITYREDACTED` replaces literal values with underscores for privacy
+                     - Queries shown are point-in-time snapshots and may complete between retrieval and display
+
+                     :::
+          availability: |
+            Available when:<br/>• The collector has successfully connected to CockroachDB<br/>• The SQL user has `VIEWACTIVITY` or `VIEWACTIVITYREDACTED` privileges<br/>• Returns HTTP 503 if the SQL connection cannot be established<br/>• Returns HTTP 500 if the query fails<br/>• Returns HTTP 504 if the query times out
+          require_cloud: true
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: These metrics refer to the entire monitored application.
+          labels: []
+          metrics:
+            - name: cockroachdb.process_cpu_time_combined_percentage
+              description: Combined CPU Time Percentage, Normalized 0-1 by Number of Cores
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: cockroachdb.process_cpu_time_percentage
+              description: CPU Time Percentage
+              unit: percentage
+              chart_type: stacked
+              dimensions:
+                - name: user
+                - name: sys
+            - name: cockroachdb.process_cpu_time
+              description: CPU Time
+              unit: ms
+              chart_type: stacked
+              dimensions:
+                - name: user
+                - name: sys
+            - name: cockroachdb.process_memory
+              description: Memory Usage
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: rss
+            - name: cockroachdb.process_file_descriptors
+              description: File Descriptors
+              unit: fd
+              chart_type: line
+              dimensions:
+                - name: open
+            - name: cockroachdb.process_uptime
+              description: Uptime
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: uptime
+            - name: cockroachdb.host_disk_bandwidth
+              description: Host Disk Cumulative Bandwidth
+              unit: KiB
+              chart_type: area
+              dimensions:
+                - name: read
+                - name: write
+            - name: cockroachdb.host_disk_operations
+              description: Host Disk Cumulative Operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: cockroachdb.host_disk_iops_in_progress
+              description: Host Disk Cumulative IOPS In Progress
+              unit: iops
+              chart_type: line
+              dimensions:
+                - name: in_progress
+            - name: cockroachdb.host_network_bandwidth
+              description: Host Network Cumulative Bandwidth
+              unit: kilobits
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: cockroachdb.host_network_packets
+              description: Host Network Cumulative Packets
+              unit: packets
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: cockroachdb.live_nodes
+              description: Live Nodes in the Cluster
+              unit: nodes
+              chart_type: line
+              dimensions:
+                - name: live_nodes
+            - name: cockroachdb.node_liveness_heartbeats
+              description: Node Liveness Heartbeats
+              unit: heartbeats
+              chart_type: stacked
+              dimensions:
+                - name: successful
+                - name: failed
+            - name: cockroachdb.total_storage_capacity
+              description: Total Storage Capacity
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: total
+            - name: cockroachdb.storage_capacity_usability
+              description: Storage Capacity Usability
+              unit: KiB
+              chart_type: stacked
+              dimensions:
+                - name: usable
+                - name: unusable
+            - name: cockroachdb.storage_usable_capacity
+              description: Storage Usable Capacity
+              unit: KiB
+              chart_type: stacked
+              dimensions:
+                - name: available
+                - name: used
+            - name: cockroachdb.storage_used_capacity_percentage
+              description: Storage Used Capacity Utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: total
+                - name: usable
+            - name: cockroachdb.sql_connections
+              description: Active SQL Connections
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: cockroachdb.sql_bandwidth
+              description: SQL Bandwidth
+              unit: KiB
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: cockroachdb.sql_statements_total
+              description: SQL Statements Total
+              unit: statements
+              chart_type: area
+              dimensions:
+                - name: started
+                - name: executed
+            - name: cockroachdb.sql_errors
+              description: SQL Statements and Transaction Errors
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: statement
+                - name: transaction
+            - name: cockroachdb.sql_started_ddl_statements
+              description: SQL Started DDL Statements
+              unit: statements
+              chart_type: line
+              dimensions:
+                - name: ddl
+            - name: cockroachdb.sql_executed_ddl_statements
+              description: SQL Executed DDL Statements
+              unit: statements
+              chart_type: line
+              dimensions:
+                - name: ddl
+            - name: cockroachdb.sql_started_dml_statements
+              description: SQL Started DML Statements
+              unit: statements
+              chart_type: stacked
+              dimensions:
+                - name: select
+                - name: update
+                - name: delete
+                - name: insert
+            - name: cockroachdb.sql_executed_dml_statements
+              description: SQL Executed DML Statements
+              unit: statements
+              chart_type: stacked
+              dimensions:
+                - name: select
+                - name: update
+                - name: delete
+                - name: insert
+            - name: cockroachdb.sql_started_tcl_statements
+              description: SQL Started TCL Statements
+              unit: statements
+              chart_type: stacked
+              dimensions:
+                - name: begin
+                - name: commit
+                - name: rollback
+                - name: savepoint
+                - name: savepoint_cockroach_restart
+                - name: release_savepoint_cockroach_restart
+                - name: rollback_to_savepoint_cockroach_restart
+            - name: cockroachdb.sql_executed_tcl_statements
+              description: SQL Executed TCL Statements
+              unit: statements
+              chart_type: stacked
+              dimensions:
+                - name: begin
+                - name: commit
+                - name: rollback
+                - name: savepoint
+                - name: savepoint_cockroach_restart
+                - name: release_savepoint_cockroach_restart
+                - name: rollback_to_savepoint_cockroach_restart
+            - name: cockroachdb.sql_active_distributed_queries
+              description: Active Distributed SQL Queries
+              unit: queries
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: cockroachdb.sql_distributed_flows
+              description: Distributed SQL Flows
+              unit: flows
+              chart_type: stacked
+              dimensions:
+                - name: active
+                - name: queued
+            - name: cockroachdb.live_bytes
+              description: Used Live Data
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: applications
+                - name: system
+            - name: cockroachdb.logical_data
+              description: Logical Data
+              unit: KiB
+              chart_type: stacked
+              dimensions:
+                - name: keys
+                - name: values
+            - name: cockroachdb.logical_data_count
+              description: Logical Data Count
+              unit: num
+              chart_type: stacked
+              dimensions:
+                - name: keys
+                - name: values
+            - name: cockroachdb.kv_transactions
+              description: KV Transactions
+              unit: transactions
+              chart_type: area
+              dimensions:
+                - name: committed
+                - name: fast-path_committed
+                - name: aborted
+            - name: cockroachdb.kv_transaction_restarts
+              description: KV Transaction Restarts
+              unit: restarts
+              chart_type: stacked
+              dimensions:
+                - name: write_too_old
+                - name: write_too_old_multiple
+                - name: forwarded_timestamp
+                - name: possible_reply
+                - name: async_consensus_failure
+                - name: read_within_uncertainty_interval
+                - name: aborted
+                - name: push_failure
+                - name: unknown
+            - name: cockroachdb.ranges
+              description: Ranges
+              unit: ranges
+              chart_type: line
+              dimensions:
+                - name: ranges
+            - name: cockroachdb.ranges_replication_problem
+              description: Ranges Replication Problems
+              unit: ranges
+              chart_type: stacked
+              dimensions:
+                - name: unavailable
+                - name: under_replicated
+                - name: over_replicated
+            - name: cockroachdb.range_events
+              description: Range Events
+              unit: events
+              chart_type: stacked
+              dimensions:
+                - name: split
+                - name: add
+                - name: remove
+                - name: merge
+            - name: cockroachdb.range_snapshot_events
+              description: Range Snapshot Events
+              unit: events
+              chart_type: stacked
+              dimensions:
+                - name: generated
+                - name: applied_raft_initiated
+                - name: applied_learner
+                - name: applied_preemptive
+            - name: cockroachdb.rocksdb_read_amplification
+              description: RocksDB Read Amplification
+              unit: reads/query
+              chart_type: line
+              dimensions:
+                - name: reads
+            - name: cockroachdb.rocksdb_table_operations
+              description: RocksDB Table Operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: compactions
+                - name: flushes
+            - name: cockroachdb.rocksdb_cache_usage
+              description: RocksDB Block Cache Usage
+              unit: KiB
+              chart_type: area
+              dimensions:
+                - name: used
+            - name: cockroachdb.rocksdb_cache_operations
+              description: RocksDB Block Cache Operations
+              unit: operations
+              chart_type: stacked
+              dimensions:
+                - name: hits
+                - name: misses
+            - name: cockroachdb.rocksdb_cache_hit_rate
+              description: RocksDB Block Cache Hit Rate
+              unit: percentage
+              chart_type: area
+              dimensions:
+                - name: hit_rate
+            - name: cockroachdb.rocksdb_sstables
+              description: RocksDB SSTables
+              unit: sstables
+              chart_type: line
+              dimensions:
+                - name: sstables
+            - name: cockroachdb.replicas
+              description: Number of Replicas
+              unit: replicas
+              chart_type: line
+              dimensions:
+                - name: replicas
+            - name: cockroachdb.replicas_quiescence
+              description: Replicas Quiescence
+              unit: replicas
+              chart_type: stacked
+              dimensions:
+                - name: quiescent
+                - name: active
+            - name: cockroachdb.replicas_leaders
+              description: Number of Raft Leaders
+              unit: replicas
+              chart_type: area
+              dimensions:
+                - name: leaders
+                - name: not_leaseholders
+            - name: cockroachdb.replicas_leaseholders
+              description: Number of Leaseholders
+              unit: leaseholders
+              chart_type: line
+              dimensions:
+                - name: leaseholders
+            - name: cockroachdb.queue_processing_failures
+              description: Queues Processing Failures
+              unit: failures
+              chart_type: stacked
+              dimensions:
+                - name: gc
+                - name: replica_gc
+                - name: replication
+                - name: split
+                - name: consistency
+                - name: raft_log
+                - name: raft_snapshot
+                - name: time_series_maintenance
+            - name: cockroachdb.rebalancing_queries
+              description: Rebalancing Average Queries
+              unit: queries/s
+              chart_type: line
+              dimensions:
+                - name: avg
+            - name: cockroachdb.rebalancing_writes
+              description: Rebalancing Average Writes
+              unit: writes/s
+              chart_type: line
+              dimensions:
+                - name: avg
+            - name: cockroachdb.timeseries_samples
+              description: Time Series Written Samples
+              unit: samples
+              chart_type: line
+              dimensions:
+                - name: written
+            - name: cockroachdb.timeseries_write_errors
+              description: Time Series Write Errors
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: write
+            - name: cockroachdb.timeseries_write_bytes
+              description: Time Series Bytes Written
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: written
+            - name: cockroachdb.slow_requests
+              description: Slow Requests
+              unit: requests
+              chart_type: stacked
+              dimensions:
+                - name: acquiring_latches
+                - name: acquiring_lease
+                - name: in_raft
+            - name: cockroachdb.code_heap_memory_usage
+              description: Heap Memory Usage
+              unit: KiB
+              chart_type: stacked
+              dimensions:
+                - name: go
+                - name: cgo
+            - name: cockroachdb.goroutines
+              description: Number of Goroutines
+              unit: goroutines
+              chart_type: line
+              dimensions:
+                - name: goroutines
+            - name: cockroachdb.gc_count
+              description: GC Runs
+              unit: invokes
+              chart_type: line
+              dimensions:
+                - name: gc
+            - name: cockroachdb.gc_pause
+              description: GC Pause Time
+              unit: us
+              chart_type: line
+              dimensions:
+                - name: pause
+            - name: cockroachdb.cgo_calls
+              description: Cgo Calls
+              unit: calls
+              chart_type: line
+              dimensions:
+                - name: cgo

@@ -1,0 +1,784 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+package proxysql
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/netdata/netdata/go/plugins/plugin/framework/collectorapi"
+)
+
+// TODO: check https://github.com/ProxySQL/proxysql-grafana-prometheus/blob/main/grafana/provisioning/dashboards/ProxySQL-Host-Statistics.json
+
+const (
+	prioClientConnectionsCount = collectorapi.Priority + iota
+	prioClientConnectionsRate
+	prioServerConnectionsCount
+	prioServerConnectionsRate
+	prioBackendsTraffic
+	prioFrontendsTraffic
+	prioActiveTransactionsCount
+	prioQuestionsRate
+	prioSlowQueriesRate
+	prioQueriesRate
+	prioBackendStatementsCount
+	prioBackendStatementsRate
+	prioFrontendStatementsCount
+	prioFrontendStatementsRate
+	prioCachedStatementsCount
+	prioQueryCacheEntriesCount
+	prioQueryCacheIO
+	prioQueryCacheRequestsRate
+	prioQueryCacheMemoryUsed
+	prioMySQLMonitorWorkersCount
+	prioMySQLMonitorWorkersRate
+	prioMySQLMonitorConnectChecksRate
+	prioMySQLMonitorPingChecksRate
+	prioMySQLMonitorReadOnlyChecksRate
+	prioMySQLMonitorReplicationLagChecksRate
+	prioJemallocMemoryUsed
+	prioMemoryUsed
+	prioMySQLCommandExecutionsRate
+	prioMySQLCommandExecutionTime
+	prioMySQLCommandExecutionDurationHistogram
+	prioMySQLUserConnectionsUtilization
+	prioMySQLUserConnectionsCount
+	prioHostgroupStatus
+	prioBackendStatus
+	prioBackendConnectionsUsage
+	prioBackendConnectionsRate
+	prioBackendQueriesRateRate
+	prioBackendTraffic
+	prioBackendLatency
+	prioUptime
+)
+
+var (
+	baseCharts = collectorapi.Charts{
+		clientConnectionsCountChart.Copy(),
+		clientConnectionsRateChart.Copy(),
+		serverConnectionsCountChart.Copy(),
+		serverConnectionsRateChart.Copy(),
+		backendsTrafficChart.Copy(),
+		frontendsTrafficChart.Copy(),
+		activeTransactionsCountChart.Copy(),
+		questionsRateChart.Copy(),
+		slowQueriesRateChart.Copy(),
+		queriesRateChart.Copy(),
+		backendStatementsCountChart.Copy(),
+		backendStatementsRateChart.Copy(),
+		clientStatementsCountChart.Copy(),
+		clientStatementsRateChart.Copy(),
+		cachedStatementsCountChart.Copy(),
+		queryCacheEntriesCountChart.Copy(),
+		queryCacheIOChart.Copy(),
+		queryCacheRequestsRateChart.Copy(),
+		queryCacheMemoryUsedChart.Copy(),
+		mySQLMonitorWorkersCountChart.Copy(),
+		mySQLMonitorWorkersRateChart.Copy(),
+		mySQLMonitorConnectChecksRateChart.Copy(),
+		mySQLMonitorPingChecksRateChart.Copy(),
+		mySQLMonitorReadOnlyChecksRateChart.Copy(),
+		mySQLMonitorReplicationLagChecksRateChart.Copy(),
+		jemallocMemoryUsedChart.Copy(),
+		memoryUsedCountChart.Copy(),
+		uptimeChart.Copy(),
+	}
+
+	clientConnectionsCountChart = collectorapi.Chart{
+		ID:       "client_connections_count",
+		Title:    "Client connections",
+		Units:    "connections",
+		Fam:      "connections",
+		Ctx:      "proxysql.client_connections_count",
+		Priority: prioClientConnectionsCount,
+		Dims: collectorapi.Dims{
+			{ID: "Client_Connections_connected", Name: "connected"},
+			{ID: "Client_Connections_non_idle", Name: "non_idle"},
+			{ID: "Client_Connections_hostgroup_locked", Name: "hostgroup_locked"},
+		},
+	}
+	clientConnectionsRateChart = collectorapi.Chart{
+		ID:       "client_connections_rate",
+		Title:    "Client connections rate",
+		Units:    "connections/s",
+		Fam:      "connections",
+		Ctx:      "proxysql.client_connections_rate",
+		Priority: prioClientConnectionsRate,
+		Dims: collectorapi.Dims{
+			{ID: "Client_Connections_created", Name: "created", Algo: collectorapi.Incremental},
+			{ID: "Client_Connections_aborted", Name: "aborted", Algo: collectorapi.Incremental},
+		},
+	}
+
+	serverConnectionsCountChart = collectorapi.Chart{
+		ID:       "server_connections_count",
+		Title:    "Server connections",
+		Units:    "connections",
+		Fam:      "connections",
+		Ctx:      "proxysql.server_connections_count",
+		Priority: prioServerConnectionsCount,
+		Dims: collectorapi.Dims{
+			{ID: "Server_Connections_connected", Name: "connected"},
+		},
+	}
+	serverConnectionsRateChart = collectorapi.Chart{
+		ID:       "server_connections_rate",
+		Title:    "Server connections rate",
+		Units:    "connections/s",
+		Fam:      "connections",
+		Ctx:      "proxysql.server_connections_rate",
+		Priority: prioServerConnectionsRate,
+		Dims: collectorapi.Dims{
+			{ID: "Server_Connections_created", Name: "created", Algo: collectorapi.Incremental},
+			{ID: "Server_Connections_aborted", Name: "aborted", Algo: collectorapi.Incremental},
+			{ID: "Server_Connections_delayed", Name: "delayed", Algo: collectorapi.Incremental},
+		},
+	}
+
+	backendsTrafficChart = collectorapi.Chart{
+		ID:       "backends_traffic",
+		Title:    "Backends traffic",
+		Units:    "B/s",
+		Fam:      "traffic",
+		Ctx:      "proxysql.backends_traffic",
+		Priority: prioBackendsTraffic,
+		Dims: collectorapi.Dims{
+			{ID: "Queries_backends_bytes_recv", Name: "recv", Algo: collectorapi.Incremental},
+			{ID: "Queries_backends_bytes_sent", Name: "sent", Algo: collectorapi.Incremental},
+		},
+	}
+	frontendsTrafficChart = collectorapi.Chart{
+		ID:       "clients_traffic",
+		Title:    "Clients traffic",
+		Units:    "B/s",
+		Fam:      "traffic",
+		Ctx:      "proxysql.clients_traffic",
+		Priority: prioFrontendsTraffic,
+		Dims: collectorapi.Dims{
+			{ID: "Queries_frontends_bytes_recv", Name: "recv", Algo: collectorapi.Incremental},
+			{ID: "Queries_frontends_bytes_sent", Name: "sent", Algo: collectorapi.Incremental},
+		},
+	}
+
+	activeTransactionsCountChart = collectorapi.Chart{
+		ID:       "active_transactions_count",
+		Title:    "Client connections that are currently processing a transaction",
+		Units:    "transactions",
+		Fam:      "transactions",
+		Ctx:      "proxysql.active_transactions_count",
+		Priority: prioActiveTransactionsCount,
+		Dims: collectorapi.Dims{
+			{ID: "Active_Transactions", Name: "active"},
+		},
+	}
+	questionsRateChart = collectorapi.Chart{
+		ID:       "questions_rate",
+		Title:    "Client requests / statements executed",
+		Units:    "questions/s",
+		Fam:      "queries",
+		Ctx:      "proxysql.questions_rate",
+		Priority: prioQuestionsRate,
+		Dims: collectorapi.Dims{
+			{ID: "Questions", Name: "questions", Algo: collectorapi.Incremental},
+		},
+	}
+	slowQueriesRateChart = collectorapi.Chart{
+		ID:       "slow_queries_rate",
+		Title:    "Slow queries",
+		Units:    "queries/s",
+		Fam:      "queries",
+		Ctx:      "proxysql.slow_queries_rate",
+		Priority: prioSlowQueriesRate,
+		Dims: collectorapi.Dims{
+			{ID: "Slow_queries", Name: "slow", Algo: collectorapi.Incremental},
+		},
+	}
+	queriesRateChart = collectorapi.Chart{
+		ID:       "queries_rate",
+		Title:    "Queries rate",
+		Units:    "queries/s",
+		Fam:      "queries",
+		Ctx:      "proxysql.queries_rate",
+		Priority: prioQueriesRate,
+		Type:     collectorapi.Stacked,
+		Dims: collectorapi.Dims{
+			{ID: "Com_autocommit", Name: "autocommit", Algo: collectorapi.Incremental},
+			{ID: "Com_autocommit_filtered", Name: "autocommit_filtered", Algo: collectorapi.Incremental},
+			{ID: "Com_commit", Name: "commit", Algo: collectorapi.Incremental},
+			{ID: "Com_commit_filtered", Name: "commit_filtered", Algo: collectorapi.Incremental},
+			{ID: "Com_rollback", Name: "rollback", Algo: collectorapi.Incremental},
+			{ID: "Com_rollback_filtered", Name: "rollback_filtered", Algo: collectorapi.Incremental},
+			{ID: "Com_backend_change_user", Name: "backend_change_user", Algo: collectorapi.Incremental},
+			{ID: "Com_backend_init_db", Name: "backend_init_db", Algo: collectorapi.Incremental},
+			{ID: "Com_backend_set_names", Name: "backend_set_names", Algo: collectorapi.Incremental},
+			{ID: "Com_frontend_init_db", Name: "frontend_init_db", Algo: collectorapi.Incremental},
+			{ID: "Com_frontend_set_names", Name: "frontend_set_names", Algo: collectorapi.Incremental},
+			{ID: "Com_frontend_use_db", Name: "frontend_use_db", Algo: collectorapi.Incremental},
+		},
+	}
+
+	backendStatementsCountChart = collectorapi.Chart{
+		ID:       "backend_statements_count",
+		Title:    "Statements available across all backend connections",
+		Units:    "statements",
+		Fam:      "statements",
+		Ctx:      "proxysql.backend_statements_count",
+		Priority: prioBackendStatementsCount,
+		Dims: collectorapi.Dims{
+			{ID: "Stmt_Server_Active_Total", Name: "total"},
+			{ID: "Stmt_Server_Active_Unique", Name: "unique"},
+		},
+	}
+	backendStatementsRateChart = collectorapi.Chart{
+		ID:       "backend_statements_rate",
+		Title:    "Statements executed against the backends",
+		Units:    "statements/s",
+		Fam:      "statements",
+		Ctx:      "proxysql.backend_statements_rate",
+		Priority: prioBackendStatementsRate,
+		Type:     collectorapi.Stacked,
+		Dims: collectorapi.Dims{
+			{ID: "Com_backend_stmt_prepare", Name: "prepare", Algo: collectorapi.Incremental},
+			{ID: "Com_backend_stmt_execute", Name: "execute", Algo: collectorapi.Incremental},
+			{ID: "Com_backend_stmt_close", Name: "close", Algo: collectorapi.Incremental},
+		},
+	}
+	clientStatementsCountChart = collectorapi.Chart{
+		ID:       "client_statements_count",
+		Title:    "Statements that are in use by clients",
+		Units:    "statements",
+		Fam:      "statements",
+		Ctx:      "proxysql.client_statements_count",
+		Priority: prioFrontendStatementsCount,
+		Dims: collectorapi.Dims{
+			{ID: "Stmt_Client_Active_Total", Name: "total"},
+			{ID: "Stmt_Client_Active_Unique", Name: "unique"},
+		},
+	}
+	clientStatementsRateChart = collectorapi.Chart{
+		ID:       "client_statements_rate",
+		Title:    "Statements executed by clients",
+		Units:    "statements/s",
+		Fam:      "statements",
+		Ctx:      "proxysql.client_statements_rate",
+		Priority: prioFrontendStatementsRate,
+		Type:     collectorapi.Stacked,
+		Dims: collectorapi.Dims{
+			{ID: "Com_frontend_stmt_prepare", Name: "prepare", Algo: collectorapi.Incremental},
+			{ID: "Com_frontend_stmt_execute", Name: "execute", Algo: collectorapi.Incremental},
+			{ID: "Com_frontend_stmt_close", Name: "close", Algo: collectorapi.Incremental},
+		},
+	}
+	cachedStatementsCountChart = collectorapi.Chart{
+		ID:       "cached_statements_count",
+		Title:    "Global prepared statements",
+		Units:    "statements",
+		Fam:      "statements",
+		Ctx:      "proxysql.cached_statements_count",
+		Priority: prioCachedStatementsCount,
+		Dims: collectorapi.Dims{
+			{ID: "Stmt_Cached", Name: "cached"},
+		},
+	}
+
+	queryCacheEntriesCountChart = collectorapi.Chart{
+		ID:       "query_cache_entries_count",
+		Title:    "Query Cache entries",
+		Units:    "entries",
+		Fam:      "query cache",
+		Ctx:      "proxysql.query_cache_entries_count",
+		Priority: prioQueryCacheEntriesCount,
+		Dims: collectorapi.Dims{
+			{ID: "Query_Cache_Entries", Name: "entries"},
+		},
+	}
+	queryCacheMemoryUsedChart = collectorapi.Chart{
+		ID:       "query_cache_memory_used",
+		Title:    "Query Cache memory used",
+		Units:    "B",
+		Fam:      "query cache",
+		Ctx:      "proxysql.query_cache_memory_used",
+		Priority: prioQueryCacheMemoryUsed,
+		Dims: collectorapi.Dims{
+			{ID: "Query_Cache_Memory_bytes", Name: "used"},
+		},
+	}
+	queryCacheIOChart = collectorapi.Chart{
+		ID:       "query_cache_io",
+		Title:    "Query Cache I/O",
+		Units:    "B/s",
+		Fam:      "query cache",
+		Ctx:      "proxysql.query_cache_io",
+		Priority: prioQueryCacheIO,
+		Dims: collectorapi.Dims{
+			{ID: "Query_Cache_bytes_IN", Name: "in", Algo: collectorapi.Incremental},
+			{ID: "Query_Cache_bytes_OUT", Name: "out", Algo: collectorapi.Incremental},
+		},
+	}
+	queryCacheRequestsRateChart = collectorapi.Chart{
+		ID:       "query_cache_requests_rate",
+		Title:    "Query Cache requests",
+		Units:    "requests/s",
+		Fam:      "query cache",
+		Ctx:      "proxysql.query_cache_requests_rate",
+		Priority: prioQueryCacheRequestsRate,
+		Dims: collectorapi.Dims{
+			{ID: "Query_Cache_count_GET", Name: "read", Algo: collectorapi.Incremental},
+			{ID: "Query_Cache_count_SET", Name: "write", Algo: collectorapi.Incremental},
+			{ID: "Query_Cache_count_GET_OK", Name: "read_success", Algo: collectorapi.Incremental},
+		},
+	}
+
+	mySQLMonitorWorkersCountChart = collectorapi.Chart{
+		ID:       "mysql_monitor_workers_count",
+		Title:    "MySQL monitor workers",
+		Units:    "threads",
+		Fam:      "monitor",
+		Ctx:      "proxysql.mysql_monitor_workers_count",
+		Priority: prioMySQLMonitorWorkersCount,
+		Dims: collectorapi.Dims{
+			{ID: "MySQL_Monitor_Workers", Name: "workers"},
+			{ID: "MySQL_Monitor_Workers_Aux", Name: "auxiliary"},
+		},
+	}
+	mySQLMonitorWorkersRateChart = collectorapi.Chart{
+		ID:       "mysql_monitor_workers_rate",
+		Title:    "MySQL monitor workers rate",
+		Units:    "workers/s",
+		Fam:      "monitor",
+		Ctx:      "proxysql.mysql_monitor_workers_rate",
+		Priority: prioMySQLMonitorWorkersRate,
+		Dims: collectorapi.Dims{
+			{ID: "MySQL_Monitor_Workers_Started", Name: "started", Algo: collectorapi.Incremental},
+		},
+	}
+	mySQLMonitorConnectChecksRateChart = collectorapi.Chart{
+		ID:       "mysql_monitor_connect_checks_rate",
+		Title:    "MySQL monitor connect checks",
+		Units:    "checks/s",
+		Fam:      "monitor",
+		Ctx:      "proxysql.mysql_monitor_connect_checks_rate",
+		Priority: prioMySQLMonitorConnectChecksRate,
+		Dims: collectorapi.Dims{
+			{ID: "MySQL_Monitor_connect_check_OK", Name: "succeed", Algo: collectorapi.Incremental},
+			{ID: "MySQL_Monitor_connect_check_ERR", Name: "failed", Algo: collectorapi.Incremental},
+		},
+	}
+	mySQLMonitorPingChecksRateChart = collectorapi.Chart{
+		ID:       "mysql_monitor_ping_checks_rate",
+		Title:    "MySQL monitor ping checks",
+		Units:    "checks/s",
+		Fam:      "monitor",
+		Ctx:      "proxysql.mysql_monitor_ping_checks_rate",
+		Priority: prioMySQLMonitorPingChecksRate,
+		Dims: collectorapi.Dims{
+			{ID: "MySQL_Monitor_ping_check_OK", Name: "succeed", Algo: collectorapi.Incremental},
+			{ID: "MySQL_Monitor_ping_check_ERR", Name: "failed", Algo: collectorapi.Incremental},
+		},
+	}
+	mySQLMonitorReadOnlyChecksRateChart = collectorapi.Chart{
+		ID:       "mysql_monitor_read_only_checks_rate",
+		Title:    "MySQL monitor read only checks",
+		Units:    "checks/s",
+		Fam:      "monitor",
+		Ctx:      "proxysql.mysql_monitor_read_only_checks_rate",
+		Priority: prioMySQLMonitorReadOnlyChecksRate,
+		Dims: collectorapi.Dims{
+			{ID: "MySQL_Monitor_read_only_check_OK", Name: "succeed", Algo: collectorapi.Incremental},
+			{ID: "MySQL_Monitor_read_only_check_ERR", Name: "failed", Algo: collectorapi.Incremental},
+		},
+	}
+	mySQLMonitorReplicationLagChecksRateChart = collectorapi.Chart{
+		ID:       "mysql_monitor_replication_lag_checks_rate",
+		Title:    "MySQL monitor replication lag checks",
+		Units:    "checks/s",
+		Fam:      "monitor",
+		Ctx:      "proxysql.mysql_monitor_replication_lag_checks_rate",
+		Priority: prioMySQLMonitorReplicationLagChecksRate,
+		Dims: collectorapi.Dims{
+			{ID: "MySQL_Monitor_replication_lag_check_OK", Name: "succeed", Algo: collectorapi.Incremental},
+			{ID: "MySQL_Monitor_replication_lag_check_ERR", Name: "failed", Algo: collectorapi.Incremental},
+		},
+	}
+
+	jemallocMemoryUsedChart = collectorapi.Chart{
+		ID:       "jemalloc_memory_used",
+		Title:    "Jemalloc used memory",
+		Units:    "bytes",
+		Fam:      "memory",
+		Ctx:      "proxysql.jemalloc_memory_used",
+		Type:     collectorapi.Stacked,
+		Priority: prioJemallocMemoryUsed,
+		Dims: collectorapi.Dims{
+			{ID: "jemalloc_active", Name: "active"},
+			{ID: "jemalloc_allocated", Name: "allocated"},
+			{ID: "jemalloc_mapped", Name: "mapped"},
+			{ID: "jemalloc_metadata", Name: "metadata"},
+			{ID: "jemalloc_resident", Name: "resident"},
+			{ID: "jemalloc_retained", Name: "retained"},
+		},
+	}
+	memoryUsedCountChart = collectorapi.Chart{
+		ID:       "memory_used",
+		Title:    "Memory used",
+		Units:    "bytes",
+		Fam:      "memory",
+		Ctx:      "proxysql.memory_used",
+		Priority: prioMemoryUsed,
+		Type:     collectorapi.Stacked,
+		Dims: collectorapi.Dims{
+			{ID: "Auth_memory", Name: "auth"},
+			{ID: "SQLite3_memory_bytes", Name: "sqlite3"},
+			{ID: "query_digest_memory", Name: "query_digest"},
+			{ID: "mysql_query_rules_memory", Name: "query_rules"},
+			{ID: "mysql_firewall_users_table", Name: "firewall_users_table"},
+			{ID: "mysql_firewall_users_config", Name: "firewall_users_config"},
+			{ID: "mysql_firewall_rules_table", Name: "firewall_rules_table"},
+			{ID: "mysql_firewall_rules_config", Name: "firewall_rules_config"},
+			{ID: "stack_memory_mysql_threads", Name: "mysql_threads"},
+			{ID: "stack_memory_admin_threads", Name: "admin_threads"},
+			{ID: "stack_memory_cluster_threads", Name: "cluster_threads"},
+		},
+	}
+	uptimeChart = collectorapi.Chart{
+		ID:       "proxysql_uptime",
+		Title:    "Uptime",
+		Units:    "seconds",
+		Fam:      "uptime",
+		Ctx:      "proxysql.uptime",
+		Priority: prioUptime,
+		Dims: collectorapi.Dims{
+			{ID: "ProxySQL_Uptime", Name: "uptime"},
+		},
+	}
+)
+
+var (
+	mySQLCommandChartsTmpl = collectorapi.Charts{
+		mySQLCommandExecutionRateChartTmpl.Copy(),
+		mySQLCommandExecutionTimeChartTmpl.Copy(),
+		mySQLCommandExecutionDurationHistogramChartTmpl.Copy(),
+	}
+
+	mySQLCommandExecutionRateChartTmpl = collectorapi.Chart{
+		ID:       "mysql_command_%s_execution_rate",
+		Title:    "MySQL command execution",
+		Units:    "commands/s",
+		Fam:      "command exec",
+		Ctx:      "proxysql.mysql_command_execution_rate",
+		Priority: prioMySQLCommandExecutionsRate,
+		Dims: collectorapi.Dims{
+			{ID: "mysql_command_%s_Total_cnt", Name: "commands", Algo: collectorapi.Incremental},
+		},
+	}
+	mySQLCommandExecutionTimeChartTmpl = collectorapi.Chart{
+		ID:       "mysql_command_%s_execution_time",
+		Title:    "MySQL command execution time",
+		Units:    "microseconds",
+		Fam:      "command exec time",
+		Ctx:      "proxysql.mysql_command_execution_time",
+		Priority: prioMySQLCommandExecutionTime,
+		Dims: collectorapi.Dims{
+			{ID: "mysql_command_%s_Total_Time_us", Name: "time", Algo: collectorapi.Incremental},
+		},
+	}
+	mySQLCommandExecutionDurationHistogramChartTmpl = collectorapi.Chart{
+		ID:       "mysql_command_%s_execution_duration",
+		Title:    "MySQL command execution duration histogram",
+		Units:    "commands/s",
+		Fam:      "command exec duration",
+		Ctx:      "proxysql.mysql_command_execution_duration",
+		Type:     collectorapi.Stacked,
+		Priority: prioMySQLCommandExecutionDurationHistogram,
+		Dims: collectorapi.Dims{
+			{ID: "mysql_command_%s_cnt_100us", Name: "100us", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_500us", Name: "500us", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_1ms", Name: "1ms", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_5ms", Name: "5ms", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_10ms", Name: "10ms", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_50ms", Name: "50ms", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_100ms", Name: "100ms", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_500ms", Name: "500ms", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_1s", Name: "1s", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_5s", Name: "5s", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_10s", Name: "10s", Algo: collectorapi.Incremental},
+			{ID: "mysql_command_%s_cnt_INFs", Name: "+Inf", Algo: collectorapi.Incremental},
+		},
+	}
+)
+
+func newMySQLCommandCountersCharts(command string) *collectorapi.Charts {
+	charts := mySQLCommandChartsTmpl.Copy()
+
+	for _, chart := range *charts {
+		chart.ID = fmt.Sprintf(chart.ID, strings.ToLower(command))
+		chart.Labels = []collectorapi.Label{{Key: "command", Value: command}}
+		for _, dim := range chart.Dims {
+			dim.ID = fmt.Sprintf(dim.ID, command)
+		}
+	}
+
+	return charts
+}
+
+func (c *Collector) addMySQLCommandCountersCharts(command string) {
+	charts := newMySQLCommandCountersCharts(command)
+
+	if err := c.Charts().Add(*charts...); err != nil {
+		c.Warning(err)
+	}
+}
+
+func (c *Collector) removeMySQLCommandCountersCharts(command string) {
+	prefix := "mysql_command_" + strings.ToLower(command)
+
+	for _, chart := range *c.Charts() {
+		if strings.HasPrefix(chart.ID, prefix) {
+			chart.MarkRemove()
+			chart.MarkNotCreated()
+		}
+	}
+}
+
+var (
+	mySQLUserChartsTmpl = collectorapi.Charts{
+		mySQLUserConnectionsUtilizationChartTmpl.Copy(),
+		mySQLUserConnectionsCountChartTmpl.Copy(),
+	}
+
+	mySQLUserConnectionsUtilizationChartTmpl = collectorapi.Chart{
+		ID:       "mysql_user_%s_connections_utilization",
+		Title:    "MySQL user connections utilization",
+		Units:    "percentage",
+		Fam:      "user conns",
+		Ctx:      "proxysql.mysql_user_connections_utilization",
+		Priority: prioMySQLUserConnectionsUtilization,
+		Dims: collectorapi.Dims{
+			{ID: "mysql_user_%s_frontend_connections_utilization", Name: "used"},
+		},
+	}
+	mySQLUserConnectionsCountChartTmpl = collectorapi.Chart{
+		ID:       "mysql_user_%s_connections_count",
+		Title:    "MySQL user connections used",
+		Units:    "connections",
+		Fam:      "user conns",
+		Ctx:      "proxysql.mysql_user_connections_count",
+		Priority: prioMySQLUserConnectionsCount,
+		Dims: collectorapi.Dims{
+			{ID: "mysql_user_%s_frontend_connections", Name: "used"},
+		},
+	}
+)
+
+func newMySQLUserCharts(username string) *collectorapi.Charts {
+	charts := mySQLUserChartsTmpl.Copy()
+
+	for _, chart := range *charts {
+		chart.ID = fmt.Sprintf(chart.ID, username)
+		chart.Labels = []collectorapi.Label{{Key: "user", Value: username}}
+		for _, dim := range chart.Dims {
+			dim.ID = fmt.Sprintf(dim.ID, username)
+		}
+	}
+
+	return charts
+}
+
+func (c *Collector) addMySQLUsersCharts(username string) {
+	charts := newMySQLUserCharts(username)
+
+	if err := c.Charts().Add(*charts...); err != nil {
+		c.Warning(err)
+	}
+}
+
+func (c *Collector) removeMySQLUserCharts(user string) {
+	prefix := "mysql_user_" + user
+
+	for _, chart := range *c.Charts() {
+		if strings.HasPrefix(chart.ID, prefix) {
+			chart.MarkRemove()
+			chart.MarkNotCreated()
+		}
+	}
+}
+
+var (
+	hostgroupChartsTmpl = collectorapi.Charts{
+		hostgroupBackendsStatusChartTmpl.Copy(),
+	}
+
+	hostgroupBackendsStatusChartTmpl = collectorapi.Chart{
+		ID:       "hostgroup_%s_backends_status",
+		Title:    "Hostgroup backends count in each status",
+		Units:    "backends",
+		Fam:      "hostgroup backends",
+		Ctx:      "proxysql.hostgroup_backends_status",
+		Priority: prioHostgroupStatus,
+		Dims: collectorapi.Dims{
+			{ID: "hostgroup_%s_backends_ONLINE", Name: "online"},
+			{ID: "hostgroup_%s_backends_SHUNNED", Name: "shunned"},
+			{ID: "hostgroup_%s_backends_OFFLINE_SOFT", Name: "offline_soft"},
+			{ID: "hostgroup_%s_backends_OFFLINE_HARD", Name: "offline_hard"},
+		},
+	}
+)
+
+func newHostgroupCharts(hg string) *collectorapi.Charts {
+	charts := hostgroupChartsTmpl.Copy()
+
+	for _, chart := range *charts {
+		chart.ID = fmt.Sprintf(chart.ID, hg)
+		chart.Labels = []collectorapi.Label{
+			{Key: "hostgroup", Value: hg},
+		}
+		for _, dim := range chart.Dims {
+			dim.ID = fmt.Sprintf(dim.ID, hg)
+		}
+	}
+
+	return charts
+}
+
+func (c *Collector) addHostgroupCharts(hg string) {
+	charts := newHostgroupCharts(hg)
+
+	if err := c.Charts().Add(*charts...); err != nil {
+		c.Warning(err)
+	}
+}
+
+func (c *Collector) removeHostgroupCharts(hg string) {
+	prefix := "hostgroup_" + hg + "_"
+
+	for _, chart := range *c.Charts() {
+		if strings.HasPrefix(chart.ID, prefix) {
+			chart.MarkRemove()
+			chart.MarkNotCreated()
+		}
+	}
+}
+
+var (
+	backendChartsTmpl = collectorapi.Charts{
+		backendStatusChartTmpl.Copy(),
+		backendConnectionsUsageChartTmpl.Copy(),
+		backendConnectionsRateChartTmpl.Copy(),
+		backendQueriesRateRateChartTmpl.Copy(),
+		backendTrafficChartTmpl.Copy(),
+		backendLatencyChartTmpl.Copy(),
+	}
+
+	backendStatusChartTmpl = collectorapi.Chart{
+		ID:       "backend_%s_status",
+		Title:    "Backend status",
+		Units:    "status",
+		Fam:      "backend status",
+		Ctx:      "proxysql.backend_status",
+		Priority: prioBackendStatus,
+		Dims: collectorapi.Dims{
+			{ID: "backend_%s_status_ONLINE", Name: "online"},
+			{ID: "backend_%s_status_SHUNNED", Name: "shunned"},
+			{ID: "backend_%s_status_OFFLINE_SOFT", Name: "offline_soft"},
+			{ID: "backend_%s_status_OFFLINE_HARD", Name: "offline_hard"},
+		},
+	}
+	backendConnectionsUsageChartTmpl = collectorapi.Chart{
+		ID:       "backend_%s_connections_usage",
+		Title:    "Backend connections usage",
+		Units:    "connections",
+		Fam:      "backend conns usage",
+		Ctx:      "proxysql.backend_connections_usage",
+		Type:     collectorapi.Stacked,
+		Priority: prioBackendConnectionsUsage,
+		Dims: collectorapi.Dims{
+			{ID: "backend_%s_ConnFree", Name: "free"},
+			{ID: "backend_%s_ConnUsed", Name: "used"},
+		},
+	}
+	backendConnectionsRateChartTmpl = collectorapi.Chart{
+		ID:       "backend_%s_connections_rate",
+		Title:    "Backend connections established",
+		Units:    "connections/s",
+		Fam:      "backend conns established",
+		Ctx:      "proxysql.backend_connections_rate",
+		Priority: prioBackendConnectionsRate,
+		Dims: collectorapi.Dims{
+			{ID: "backend_%s_ConnOK", Name: "succeed", Algo: collectorapi.Incremental},
+			{ID: "backend_%s_ConnERR", Name: "failed", Algo: collectorapi.Incremental},
+		},
+	}
+	backendQueriesRateRateChartTmpl = collectorapi.Chart{
+		ID:       "backend_%s_queries_rate",
+		Title:    "Backend queries",
+		Units:    "queries/s",
+		Fam:      "backend queries",
+		Ctx:      "proxysql.backend_queries_rate",
+		Priority: prioBackendQueriesRateRate,
+		Dims: collectorapi.Dims{
+			{ID: "backend_%s_Queries", Name: "queries", Algo: collectorapi.Incremental},
+		},
+	}
+	backendTrafficChartTmpl = collectorapi.Chart{
+		ID:       "backend_%s_traffic",
+		Title:    "Backend traffic",
+		Units:    "B/s",
+		Fam:      "backend traffic",
+		Ctx:      "proxysql.backend_traffic",
+		Priority: prioBackendTraffic,
+		Dims: collectorapi.Dims{
+			{ID: "backend_%s_Bytes_data_recv", Name: "recv", Algo: collectorapi.Incremental},
+			{ID: "backend_%s_Bytes_data_sent", Name: "sent", Algo: collectorapi.Incremental},
+		},
+	}
+	backendLatencyChartTmpl = collectorapi.Chart{
+		ID:       "backend_%s_latency",
+		Title:    "Backend latency",
+		Units:    "microseconds",
+		Fam:      "backend latency",
+		Ctx:      "proxysql.backend_latency",
+		Priority: prioBackendLatency,
+		Dims: collectorapi.Dims{
+			{ID: "backend_%s_Latency_us", Name: "latency"},
+		},
+	}
+)
+
+func newBackendCharts(hg, host, port string) *collectorapi.Charts {
+	charts := backendChartsTmpl.Copy()
+
+	for _, chart := range *charts {
+		chart.ID = fmt.Sprintf(chart.ID, backendID(hg, host, port))
+		chart.Labels = []collectorapi.Label{
+			{Key: "hostgroup", Value: hg},
+			{Key: "host", Value: host},
+			{Key: "port", Value: port},
+		}
+		for _, dim := range chart.Dims {
+			dim.ID = fmt.Sprintf(dim.ID, backendID(hg, host, port))
+		}
+	}
+
+	return charts
+}
+
+func (c *Collector) addBackendCharts(hg, host, port string) {
+	charts := newBackendCharts(hg, host, port)
+
+	if err := c.Charts().Add(*charts...); err != nil {
+		c.Warning(err)
+	}
+}
+
+func (c *Collector) removeBackendCharts(hg, host, port string) {
+	prefix := "backend_" + backendID(hg, host, port)
+
+	for _, chart := range *c.Charts() {
+		if strings.HasPrefix(chart.ID, prefix) {
+			chart.MarkRemove()
+			chart.MarkNotCreated()
+		}
+	}
+}

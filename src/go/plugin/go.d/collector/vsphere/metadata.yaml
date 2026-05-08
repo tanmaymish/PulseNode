@@ -1,0 +1,871 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-vsphere
+      plugin_name: go.d.plugin
+      module_name: vsphere
+      monitored_instance:
+        name: VMware vCenter Server
+        link: https://www.vmware.com/products/vcenter-server.html
+        icon_filename: vmware.svg
+        categories:
+          - data-collection.containers-and-vms
+      keywords:
+        - vmware
+        - esxi
+        - vcenter
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors hosts, VMs, datastores, clusters, and resource pools from `vCenter` servers.
+          
+          > **Warning**: The `vsphere` collector cannot re-login and continue collecting metrics after a vCenter reboot.
+          > go.d.plugin needs to be restarted.
+        method_description: ""
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: ""
+        limits:
+          description: ""
+        performance_impact:
+          description: |
+            The default `update_every` is 20 seconds, and it doesn't make sense to decrease the value.
+            **VMware real-time statistics are generated at the 20-second specificity**.
+
+            **Note**: Datastore and cluster performance metrics use 300-second (5-minute) historical intervals because VMware does not support real-time statistics for these entity types. Datastore capacity/status, cluster properties, and resource pool statistics are updated every collection cycle. Host and VM metrics use real-time 20-second intervals.
+
+            It is likely that 20 seconds is not enough for big installations and the value should be tuned.
+
+            To get a better view we recommend running the collector in debug mode and seeing how much time it will take to collect metrics.
+
+            <details>
+            <summary>Example (all not related debug lines were removed)</summary>
+            
+            ```
+            [ilyam@pc]$ ./go.d.plugin -d -m vsphere
+            [ DEBUG ] vsphere[vsphere] discover.go:94 discovering : starting resource discovering process
+            [ DEBUG ] vsphere[vsphere] discover.go:102 discovering : found 3 dcs, process took 49.329656ms
+            [ DEBUG ] vsphere[vsphere] discover.go:109 discovering : found 12 folders, process took 49.538688ms
+            [ DEBUG ] vsphere[vsphere] discover.go:116 discovering : found 3 clusters, process took 47.722692ms
+            [ DEBUG ] vsphere[vsphere] discover.go:123 discovering : found 2 hosts, process took 52.966995ms
+            [ DEBUG ] vsphere[vsphere] discover.go:130 discovering : found 2 vms, process took 49.832979ms
+            [ INFO  ] vsphere[vsphere] discover.go:140 discovering : found 3 dcs, 12 folders, 3 clusters (2 dummy), 2 hosts, 3 vms, process took 249.655993ms
+            [ DEBUG ] vsphere[vsphere] build.go:12 discovering : building : starting building resources process
+            [ INFO  ] vsphere[vsphere] build.go:23 discovering : building : built 3/3 dcs, 12/12 folders, 3/3 clusters, 2/2 hosts, 3/3 vms, process took 63.3µs
+            [ DEBUG ] vsphere[vsphere] hierarchy.go:10 discovering : hierarchy : start setting resources hierarchy process
+            [ INFO  ] vsphere[vsphere] hierarchy.go:18 discovering : hierarchy : set 3/3 clusters, 2/2 hosts, 3/3 vms, process took 6.522µs
+            [ DEBUG ] vsphere[vsphere] filter.go:24 discovering : filtering : starting filtering resources process
+            [ DEBUG ] vsphere[vsphere] filter.go:45 discovering : filtering : removed 0 unmatched hosts
+            [ DEBUG ] vsphere[vsphere] filter.go:56 discovering : filtering : removed 0 unmatched vms
+            [ INFO  ] vsphere[vsphere] filter.go:29 discovering : filtering : filtered 0/2 hosts, 0/3 vms, process took 42.973µs
+            [ DEBUG ] vsphere[vsphere] metric_lists.go:14 discovering : metric lists : starting resources metric lists collection process
+            [ INFO  ] vsphere[vsphere] metric_lists.go:30 discovering : metric lists : collected metric lists for 2/2 hosts, 3/3 vms, process took 275.60764ms
+            [ INFO  ] vsphere[vsphere] discover.go:74 discovering : discovered 2/2 hosts, 3/3 vms, the whole process took 525.614041ms
+            [ INFO  ] vsphere[vsphere] discover.go:11 starting discovery process, will do discovery every 5m0s
+            [ DEBUG ] vsphere[vsphere] collect.go:11 starting collection process
+            [ DEBUG ] vsphere[vsphere] scrape.go:48 scraping : scraped metrics for 2/2 hosts, process took 96.257374ms
+            [ DEBUG ] vsphere[vsphere] scrape.go:60 scraping : scraped metrics for 3/3 vms, process took 57.879697ms
+            [ DEBUG ] vsphere[vsphere] collect.go:23 metrics collected, process took 154.77997ms
+            ```
+            
+            </details>
+            
+            There you can see that discovering took `525.614041ms`, and collecting metrics took `154.77997ms`. Discovering is a separate thread, it doesn't affect collecting.
+            `update_every` and `timeout` parameters should be adjusted based on these numbers.
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: go.d/vsphere.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 20
+              required: false
+              group: Collection
+
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: https://vcenter.local
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 20
+              required: false
+              group: Target
+
+            - name: discovery_interval
+              description: Hosts, VMs, datastores, clusters, and resource pools discovery interval (seconds).
+              default_value: 300
+              required: false
+              group: Discovery
+
+            - name: host_include
+              description: Hosts selector (filter).
+              default_value: "/*"
+              required: false
+              group: Filters
+              detailed_description: |
+                Metrics of hosts matching the selector will be collected.
+                
+                - Include pattern syntax: "/Datacenter pattern/Cluster pattern/Host pattern".
+                - Match pattern syntax: [simple patterns](/src/libnetdata/simple_pattern/README.md#simple-patterns).
+                - Syntax:
+
+                  ```yaml
+                  host_include:
+                    - '/DC1/*'           # all hosts from datacenter DC1
+                    - '/DC2/*/!Host2 *'  # all hosts from datacenter DC2 except HOST2
+                    - '/DC3/Cluster3/*'  # all hosts from DC3, cluster Cluster3
+                  ```
+            - name: vm_include
+              description: VM selector (filter).
+              default_value: "/*"
+              required: false
+              group: Filters
+              detailed_description: |
+                Metrics of VMs matching the selector will be collected.
+
+                - Include pattern syntax: "/Datacenter pattern/Cluster pattern/Host pattern/VM pattern".
+                - Match pattern syntax: [simple patterns](/src/libnetdata/simple_pattern/README.md#simple-patterns).
+                - Syntax:
+
+                  ```yaml
+                  vm_include:
+                    - '/DC1/*'           # all VMs from datacenter DC1
+                    - '/DC2/*/*/!VM2 *'  # all VMs from DC2 except VM2
+                    - '/DC3/Cluster3/*'  # all VMs from DC3, cluster Cluster3
+                  ```
+            - name: datastore_include
+              description: Datastore selector (filter).
+              default_value: "/*"
+              required: false
+              group: Filters
+              detailed_description: |
+                Metrics of datastores matching the selector will be collected.
+
+                - Include pattern syntax: "/Datacenter pattern/Datastore pattern".
+                - Match pattern syntax: [simple patterns](/src/libnetdata/simple_pattern/README.md#simple-patterns).
+                - Syntax:
+
+                  ```yaml
+                  datastore_include:
+                    - '/DC1/*'           # all datastores from datacenter DC1
+                    - '/DC2/!DS2 *'      # all datastores from DC2 except DS2
+                  ```
+            - name: cluster_include
+              description: Cluster selector (filter). Resource pools follow their owning cluster.
+              default_value: "/*"
+              required: false
+              group: Filters
+              detailed_description: |
+                Metrics of clusters and their resource pools matching the selector will be collected.
+
+                - Include pattern syntax: "/Datacenter pattern/Cluster pattern".
+                - Match pattern syntax: [simple patterns](/src/libnetdata/simple_pattern/README.md#simple-patterns).
+                - Syntax:
+
+                  ```yaml
+                  cluster_include:
+                    - '/DC1/*'           # all clusters from datacenter DC1
+                    - '/DC2/!Cluster2 *' # all clusters from DC2 except Cluster2
+                  ```
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: true
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: true
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: "GET"
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              folding:
+                enabled: false
+              description: A basic example configuration.
+              config: |
+                jobs:
+                  - name     : vcenter1
+                    url      : https://203.0.113.1
+                    username : admin@vsphere.local
+                    password : somepassword
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name     : vcenter1
+                    url      : https://203.0.113.1
+                    username : admin@vsphere.local
+                    password : somepassword
+
+                  - name     : vcenter2
+                    url      : https://203.0.113.10
+                    username : admin@vsphere.local
+                    password : somepassword
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: vsphere_vm_cpu_utilization
+        metric: vsphere.vm_cpu_utilization
+        info: Virtual Machine CPU utilization
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/vsphere.conf
+      - name: vsphere_vm_mem_usage
+        metric: vsphere.vm_mem_utilization
+        info: Virtual Machine memory utilization
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/vsphere.conf
+      - name: vsphere_host_cpu_utilization
+        metric: vsphere.host_cpu_utilization
+        info: ESXi Host CPU utilization
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/vsphere.conf
+      - name: vsphere_host_mem_utilization
+        metric: vsphere.host_mem_utilization
+        info: ESXi Host memory utilization
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/vsphere.conf
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: virtual machine
+          description: These metrics refer to the Virtual Machine.
+          labels:
+            - name: datacenter
+              description: Datacenter name
+            - name: cluster
+              description: Cluster name
+            - name: host
+              description: Host name
+            - name: vm
+              description: Virtual Machine name
+          metrics:
+            - name: vsphere.vm_cpu_utilization
+              description: Virtual Machine CPU utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: vsphere.vm_mem_utilization
+              description: Virtual Machine memory utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: vsphere.vm_mem_usage
+              description: Virtual Machine memory usage
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: granted
+                - name: consumed
+                - name: active
+                - name: shared
+            - name: vsphere.vm_mem_swap_usage
+              description: Virtual Machine VMKernel memory swap usage
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: swapped
+            - name: vsphere.vm_mem_swap_io
+              description: Virtual Machine VMKernel memory swap IO
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: in
+                - name: out
+            - name: vsphere.vm_disk_io
+              description: Virtual Machine disk IO
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: read
+                - name: write
+            - name: vsphere.vm_disk_max_latency
+              description: Virtual Machine disk max latency
+              unit: milliseconds
+              chart_type: line
+              dimensions:
+                - name: latency
+            - name: vsphere.vm_net_traffic
+              description: Virtual Machine network traffic
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: vsphere.vm_net_packets
+              description: Virtual Machine network packets
+              unit: packets
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: vsphere.vm_net_drops
+              description: Virtual Machine network dropped packets
+              unit: packets
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: vsphere.vm_overall_status
+              description: Virtual Machine overall alarm status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: green
+                - name: red
+                - name: yellow
+                - name: gray
+            - name: vsphere.vm_system_uptime
+              description: Virtual Machine system uptime
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: uptime
+        - name: host
+          description: These metrics refer to the ESXi host.
+          labels:
+            - name: datacenter
+              description: Datacenter name
+            - name: cluster
+              description: Cluster name
+            - name: host
+              description: Host name
+          metrics:
+            - name: vsphere.host_cpu_utilization
+              description: ESXi Host CPU utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: vsphere.host_mem_utilization
+              description: ESXi Host memory utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: vsphere.host_mem_usage
+              description: ESXi Host memory usage
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: granted
+                - name: consumed
+                - name: active
+                - name: shared
+                - name: sharedcommon
+            - name: vsphere.host_mem_swap_io
+              description: ESXi Host VMKernel memory swap IO
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: in
+                - name: out
+            - name: vsphere.host_disk_io
+              description: ESXi Host disk IO
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: read
+                - name: write
+            - name: vsphere.host_disk_max_latency
+              description: ESXi Host disk max latency
+              unit: milliseconds
+              chart_type: line
+              dimensions:
+                - name: latency
+            - name: vsphere.host_net_traffic
+              description: ESXi Host network traffic
+              unit: KiB/s
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: vsphere.host_net_packets
+              description: ESXi Host network packets
+              unit: packets
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: vsphere.host_net_drops
+              description: ESXi Host network drops
+              unit: packets
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: vsphere.host_net_errors
+              description: ESXi Host network errors
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: vsphere.host_overall_status
+              description: ESXi Host overall alarm status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: green
+                - name: red
+                - name: yellow
+                - name: gray
+            - name: vsphere.host_system_uptime
+              description: ESXi Host system uptime
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: uptime
+        - name: datastore
+          description: These metrics refer to the Datastore.
+          labels:
+            - name: datacenter
+              description: Datacenter name
+            - name: datastore
+              description: Datastore name
+            - name: type
+              description: "Datastore type (VMFS, NFS, NFS41, vsan, VVOL, PMEM)"
+          metrics:
+            - name: vsphere.datastore_disk_io
+              description: Datastore disk IO
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: read
+                - name: write
+            - name: vsphere.datastore_disk_iops
+              description: Datastore disk IOPS
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: vsphere.datastore_disk_latency
+              description: Datastore disk latency
+              unit: milliseconds
+              chart_type: line
+              dimensions:
+                - name: read
+                - name: write
+            - name: vsphere.datastore_space_utilization
+              description: Datastore space utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: vsphere.datastore_space_usage
+              description: Datastore space usage
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: capacity
+                - name: free
+                - name: used
+            - name: vsphere.datastore_overall_status
+              description: Datastore overall alarm status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: green
+                - name: red
+                - name: yellow
+                - name: gray
+        - name: cluster
+          description: These metrics refer to the vSphere Cluster.
+          labels:
+            - name: datacenter
+              description: Datacenter name
+            - name: cluster
+              description: Cluster name
+          metrics:
+            - name: vsphere.cluster_hosts
+              description: Cluster host count
+              unit: hosts
+              chart_type: line
+              dimensions:
+                - name: total
+                - name: effective
+            - name: vsphere.cluster_cpu_capacity
+              description: Cluster CPU capacity
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: total
+                - name: effective
+            - name: vsphere.cluster_mem_capacity
+              description: Cluster memory capacity
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: total
+                - name: effective
+            - name: vsphere.cluster_cpu_topology
+              description: Cluster CPU topology
+              unit: count
+              chart_type: line
+              dimensions:
+                - name: cores
+                - name: threads
+            - name: vsphere.cluster_drs_config
+              description: Cluster DRS enabled
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: enabled
+            - name: vsphere.cluster_ha_config
+              description: Cluster HA configuration
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: enabled
+                - name: admission_control
+            - name: vsphere.cluster_overall_status
+              description: Cluster overall alarm status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: green
+                - name: red
+                - name: yellow
+                - name: gray
+            - name: vsphere.cluster_vmotions
+              description: Cluster cumulative vMotion count
+              unit: migrations
+              chart_type: line
+              dimensions:
+                - name: vmotions
+            - name: vsphere.cluster_drs_score
+              description: Cluster DRS score
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: score
+            - name: vsphere.cluster_drs_balance
+              description: Cluster DRS load balance
+              unit: score
+              chart_type: line
+              dimensions:
+                - name: current
+                - name: target
+            - name: vsphere.cluster_vm_count
+              description: Cluster VM count
+              unit: VMs
+              chart_type: line
+              dimensions:
+                - name: total
+                - name: powered_off
+            - name: vsphere.cluster_usage_cpu
+              description: Cluster DRS CPU usage summary
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: demand
+                - name: entitled
+                - name: reserved
+            - name: vsphere.cluster_usage_mem
+              description: Cluster DRS memory usage summary
+              unit: MB
+              chart_type: line
+              dimensions:
+                - name: demand
+                - name: entitled
+                - name: reserved
+            - name: vsphere.cluster_cpu_utilization
+              description: Cluster CPU utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: vsphere.cluster_cpu_usage
+              description: Cluster CPU usage
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: used
+                - name: total
+            - name: vsphere.cluster_mem_utilization
+              description: Cluster memory utilization
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: vsphere.cluster_mem_usage
+              description: Cluster memory usage
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: consumed
+                - name: active
+                - name: granted
+                - name: shared
+                - name: overhead
+                - name: swap_used
+            - name: vsphere.cluster_services_fairness
+              description: Cluster DRS resource distribution fairness
+              unit: score
+              chart_type: line
+              dimensions:
+                - name: cpu
+                - name: memory
+            - name: vsphere.cluster_services_effective_cpu
+              description: Cluster effective CPU capacity
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: effective_cpu
+            - name: vsphere.cluster_services_effective_mem
+              description: Cluster effective memory capacity
+              unit: MB
+              chart_type: line
+              dimensions:
+                - name: effective_mem
+            - name: vsphere.cluster_services_failover
+              description: Cluster HA failover capacity
+              unit: failures
+              chart_type: line
+              dimensions:
+                - name: failures_tolerable
+            - name: vsphere.cluster_vm_migrations
+              description: Cluster VM migration operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: vmotion
+                - name: svmotion
+                - name: xvmotion
+            - name: vsphere.cluster_vm_lifecycle
+              description: Cluster VM lifecycle operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: poweron
+                - name: poweroff
+                - name: create
+                - name: destroy
+                - name: clone
+                - name: deploy
+            - name: vsphere.cluster_vm_management
+              description: Cluster VM management operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: reconfigure
+                - name: reset
+                - name: suspend
+                - name: register
+                - name: unregister
+            - name: vsphere.cluster_vm_guest_ops
+              description: Cluster VM guest operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: reboot
+                - name: shutdown
+                - name: standby
+            - name: vsphere.cluster_vm_cold_migrations
+              description: Cluster VM cold migration operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: change_ds
+                - name: change_host
+                - name: change_host_ds
+        - name: resource pool
+          description: These metrics refer to the vSphere Resource Pool.
+          labels:
+            - name: datacenter
+              description: Datacenter name
+            - name: cluster
+              description: Cluster name
+            - name: resource_pool
+              description: Resource Pool name
+          metrics:
+            - name: vsphere.resource_pool_cpu_usage
+              description: Resource Pool CPU usage vs demand
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: usage
+                - name: demand
+            - name: vsphere.resource_pool_cpu_entitlement
+              description: Resource Pool CPU entitlement
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: distributed
+            - name: vsphere.resource_pool_cpu_allocation
+              description: Resource Pool CPU allocation
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: reservation_used
+                - name: unreserved_for_vm
+                - name: max_usage
+            - name: vsphere.resource_pool_mem_usage
+              description: Resource Pool memory usage
+              unit: MB
+              chart_type: line
+              dimensions:
+                - name: host
+                - name: guest
+            - name: vsphere.resource_pool_mem_entitlement
+              description: Resource Pool memory entitlement
+              unit: MB
+              chart_type: line
+              dimensions:
+                - name: distributed
+            - name: vsphere.resource_pool_mem_allocation
+              description: Resource Pool memory allocation
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: reservation_used
+                - name: unreserved_for_vm
+                - name: max_usage
+            - name: vsphere.resource_pool_mem_breakdown
+              description: Resource Pool memory state breakdown
+              unit: MB
+              chart_type: line
+              dimensions:
+                - name: private
+                - name: shared
+                - name: swapped
+                - name: ballooned
+                - name: overhead
+                - name: consumed_overhead
+                - name: compressed
+            - name: vsphere.resource_pool_cpu_config
+              description: Resource Pool CPU configured reservation and limit
+              unit: MHz
+              chart_type: line
+              dimensions:
+                - name: reservation
+                - name: limit
+            - name: vsphere.resource_pool_mem_config
+              description: Resource Pool memory configured reservation and limit
+              unit: MB
+              chart_type: line
+              dimensions:
+                - name: reservation
+                - name: limit
+            - name: vsphere.resource_pool_overall_status
+              description: Resource Pool overall alarm status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: green
+                - name: red
+                - name: yellow
+                - name: gray

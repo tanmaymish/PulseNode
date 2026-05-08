@@ -1,0 +1,278 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      plugin_name: go.d.plugin
+      module_name: tomcat
+      monitored_instance:
+        name: Tomcat
+        link: "https://tomcat.apache.org/"
+        categories:
+          - data-collection.web-servers-and-proxies
+        icon_filename: "tomcat.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - apache
+        - tomcat
+        - webserver
+        - websocket
+        - jakarta
+        - javaEE
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Tomcat metrics about bandwidth, processing time, threads and more.
+        method_description: |
+          It parses the information provided by the [Server Status](https://tomcat.apache.org/tomcat-10.0-doc/manager-howto.html#Server_Status) HTTP endpoint.
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: >
+          By default, this Tomcat collector cannot access the server's status page.
+          To enable data collection, you will need to configure access credentials with appropriate permissions.
+      default_behavior:
+        auto_detection:
+          description: >
+            If the Netdata Agent and Tomcat are on the same host, the collector will attempt to connect to the Tomcat server's status page at `http://localhost:8080/manager/status?XML=true`.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list:
+          - title: Access to Tomcat Status Endpoint
+            description: |
+              The Netdata Agent needs read-only access to its status endpoint to collect data from the Tomcat server.
+
+              You can achieve this by creating a dedicated user named `netdata` with read-only permissions specifically for accessing the [Server Status](https://tomcat.apache.org/tomcat-10.0-doc/manager-howto.html#Server_Status) endpoint.
+
+              Once you've created the `netdata` user, you'll need to configure the username and password in the collector configuration file.
+      configuration:
+        file:
+          name: "go.d/tomcat.conf"
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: "Config options"
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: http://127.0.0.1:8080
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: "GET"
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            enabled: true
+            title: "Config"
+          list:
+            - name: Basic
+              description: A basic example configuration.
+              folding:
+                enabled: false
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    username: John
+                    password: Doe
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8080
+                    username: admin1
+                    password: hackme1
+
+                  - name: remote
+                    url: http://192.0.2.1:8080
+                    username: admin2
+                    password: hackme2
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: "These metrics refer to the entire monitored application."
+          labels: []
+          metrics:
+            - name: tomcat.jvm_memory_usage
+              description: Requests
+              unit: bytes
+              chart_type: stacked
+              dimensions:
+                - name: free
+                - name: used
+        - name: jvm memory pool
+          description: "These metrics refer to the JVM memory pool."
+          labels:
+            - name: mempool_name
+              description: Memory Pool name.
+            - name: mempool_type
+              description: Memory Pool type.
+          metrics:
+            - name: tomcat.jvm_mem_pool_memory_usage
+              description: JVM Mem Pool Memory Usage
+              unit: bytes
+              chart_type: area
+              dimensions:
+                - name: commited
+                - name: used
+                - name: max
+        - name: connector
+          description: "These metrics refer to the connector."
+          labels:
+            - name: connector_name
+              description: Connector name.
+          metrics:
+            - name: tomcat.connector_requests
+              description: Connector Requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: tomcat.connector_bandwidth
+              description: Connector Bandwidth
+              unit: bytes/s
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: tomcat.connector_requests_processing_time
+              description: Connector Requests Processing Time
+              unit: milliseconds
+              chart_type: line
+              dimensions:
+                - name: processing_time
+            - name: tomcat.connector_errors
+              description: Connector Errors
+              unit: errors/s
+              chart_type: line
+              dimensions:
+                - name: errors
+            - name: tomcat.connector_request_threads
+              description: Connector Request Threads
+              unit: threads
+              chart_type: stacked
+              dimensions:
+                - name: idle
+                - name: busy

@@ -1,0 +1,383 @@
+{
+  "jsonSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "update_every": {
+        "title": "Update every",
+        "description": "Data collection interval, measured in seconds.",
+        "type": "integer",
+        "minimum": 1,
+        "default": 10
+      },
+      "hostname": {
+        "title": "Hostname",
+        "description": "The hostname or IP address of the SNMP-enabled device.",
+        "type": "string"
+      },
+      "community": {
+        "title": "SNMPv1/2 community",
+        "description": "The SNMP community string for SNMPv1/v2c authentication.",
+        "type": "string",
+        "default": "public"
+      },
+      "create_vnode": {
+        "title": "Create",
+        "description": "If set, the collector will create a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes) for this SNMP device, which will appear as a separate Node in Netdata.",
+        "type": "boolean",
+        "default": true
+      },
+      "vnode_device_down_threshold": {
+        "title": "Device Down Threshold",
+        "description": "Number of consecutive failed data collections before marking the device as down.",
+        "type": "integer",
+        "minimum": 1,
+        "default": 3
+      },
+      "vnode": {
+        "title": "Configuration",
+        "description": "",
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "guid": {
+            "title": "GUID",
+            "description": "A unique identifier for the Virtual Node. If not set, a GUID will be automatically generated from the device's IP address.",
+            "type": "string"
+          },
+          "hostname": {
+            "title": "Hostname",
+            "description": "The hostname that will be used for the Virtual Node. If not set, the device's hostname will be used.",
+            "type": "string"
+          },
+          "labels": {
+            "title": "Labels",
+            "description": "Additional key-value pairs to associate with the Virtual Node.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "options": {
+        "title": "Options",
+        "description": "Configuration options for SNMP monitoring.",
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "version": {
+            "title": "SNMP version",
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "2c",
+              "3"
+            ],
+            "default": "2c"
+          },
+          "port": {
+            "title": "Port",
+            "description": "The port number on which the SNMP service is running.",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "default": 161
+          },
+          "timeout": {
+            "title": "Timeout",
+            "description": "The timeout duration in seconds for SNMP requests.",
+            "type": "integer",
+            "minimum": 1,
+            "default": 5
+          },
+          "retries": {
+            "title": "Retries",
+            "description": "The number of retries to attempt for SNMP requests.",
+            "type": "integer",
+            "minimum": 0,
+            "default": 1
+          },
+          "max_repetitions": {
+            "title": "Max repetitions",
+            "description": "Controls how many SNMP variables to retrieve in a single GETBULK request.",
+            "type": "integer",
+            "minimum": 1,
+            "default": 25
+          },
+          "max_request_size": {
+            "title": "Max OIDs",
+            "description": "The maximum number of OIDs allowed in a single GET request.",
+            "type": "integer",
+            "minimum": 1,
+            "default": 20
+          }
+        },
+        "required": [
+          "version",
+          "port",
+          "retries",
+          "timeout",
+          "max_request_size"
+        ]
+      },
+      "user": {
+        "title": "SNMPv3 configuration",
+        "description": "Configuration options for SNMPv3 authentication and encryption.",
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "name": {
+            "title": "Username",
+            "description": "The username for SNMPv3 authentication.",
+            "type": "string"
+          },
+          "level": {
+            "title": "Security level",
+            "description": "Controls the security aspects of SNMPv3 communication, including authentication and encryption.",
+            "type": "string",
+            "enum": [
+              "none",
+              "authNoPriv",
+              "authPriv"
+            ],
+            "default": "authPriv"
+          },
+          "auth_proto": {
+            "title": "Authentication protocol",
+            "type": "string",
+            "enum": [
+              "none",
+              "md5",
+              "sha",
+              "sha224",
+              "sha256",
+              "sha384",
+              "sha512"
+            ],
+            "default": "sha512"
+          },
+          "auth_key": {
+            "title": "Authentication passphrase",
+            "type": "string"
+          },
+          "priv_proto": {
+            "title": "Privacy protocol",
+            "type": "string",
+            "enum": [
+              "none",
+              "des",
+              "aes",
+              "aes192",
+              "aes256",
+              "aes192c"
+            ],
+            "default": "aes192c"
+          },
+          "priv_key": {
+            "title": "Privacy passphrase",
+            "type": "string"
+          },
+          "context_name": {
+            "title": "Context name",
+            "description": "SNMPv3 context name used to address a specific MIB view on multi-context agents (e.g. virtual routers, logical partitions, snmpsim-simulated devices). Leave empty to use the default context.",
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "manual_profiles": {
+        "title": "Manual SNMP Profiles",
+        "description": "Profiles to apply if automatic detection cannot be used. In most cases, **leave this empty**.",
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "uniqueItems": true
+      },
+      "ping_only": {
+        "title": "Ping only",
+        "description": "Collect only ICMP round-trip time and skip SNMP profile metrics. Implies ping is enabled regardless of the ping.enabled setting.",
+        "type": "boolean",
+        "default": false
+      },
+      "ping": {
+        "title": "Ping",
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "enabled": {
+            "title": "Enable ping",
+            "type": "boolean",
+            "default": true,
+            "description": "Collect ICMP round-trip time using pro-bing alongside SNMP."
+          },
+          "network": {
+            "title": "Network",
+            "description": "The protocol version used for resolving the specified hosts IP addresses.",
+            "type": "string",
+            "default": "ip",
+            "enum": [
+              "ip",
+              "ip4",
+              "ip6"
+            ]
+          },
+          "privileged": {
+            "title": "Privileged mode",
+            "description": "If set, sends raw ICMP ping packets; otherwise, sends unprivileged UDP ping packets (require [additional configuration](https://github.com/netdata/netdata/tree/master/src/go/plugin/go.d/collector/ping#overview)).",
+            "type": "boolean",
+            "default": true
+          },
+          "interface": {
+            "title": "Interface",
+            "description": "The network device name (e.g., `eth0`, `wlan0`) used as the source for ICMP echo requests.",
+            "type": "string",
+            "default": ""
+          },
+          "packets": {
+            "title": "Packets",
+            "description": "Number of echo requests sent each collection cycle.",
+            "type": "integer",
+            "minimum": 1,
+            "default": 3
+          },
+          "interval": {
+            "title": "Interval",
+            "description": "Timeout between sending ping packets, in seconds.",
+            "type": "number",
+            "minimum": 0.1,
+            "default": 0.1
+          }
+        }
+      }
+    },
+    "required": [
+      "hostname",
+      "community",
+      "options"
+    ]
+  },
+  "uiSchema": {
+    "uiOptions": {
+      "fullPage": true
+    },
+    "manual_profiles": {
+      "ui:listFlavour": "list",
+      "ui:help": "**Profiles are always applied automatically** based on the device sysObjectID. **If no sysObjectID is provided** (rare case, e.g. some printers), the profiles listed here will be applied instead. In most cases, **leave this empty**."
+    },
+    "community": {
+      "ui:widget": "password"
+    },
+    "options": {
+      "version": {
+        "ui:widget": "radio",
+        "ui:options": {
+          "inline": true
+        }
+      },
+      "max_repetitions": {
+        "ui:help": "A higher value retrieves more data in fewer round trips, potentially improving efficiency. This reduces network overhead compared to sending multiple individual requests. **Important**: Setting a value too high might cause the target device to return no data."
+      }
+    },
+    "user": {
+      "name": {
+        "ui:widget": "password"
+      },
+      "level": {
+        "ui:widget": "radio",
+        "ui:options": {
+          "inline": true
+        }
+      },
+      "auth_proto": {
+        "ui:widget": "radio",
+        "ui:options": {
+          "inline": true
+        }
+      },
+      "auth_key": {
+        "ui:widget": "password"
+      },
+      "priv_proto": {
+        "ui:widget": "radio",
+        "ui:options": {
+          "inline": true
+        }
+      },
+      "priv_key": {
+        "ui:widget": "password"
+      },
+      "context_name": {
+        "ui:help": "Advanced. Usually left empty. Required when targeting a specific context on multi-context agents or when driving snmpsim virtual devices."
+      }
+    },
+    "ping_only": {
+      "ui:help": "A minimal SNMP sysInfo query still runs at startup for device identification, profile matching, and metadata."
+    },
+    "ping": {
+      "interface": {
+        "ui:widget": "hidden"
+      },
+      "network": {
+        "ui:widget": "hidden"
+      }
+    },
+    "ui:flavour": "tabs",
+    "ui:options": {
+      "tabs": [
+        {
+          "title": "Base",
+          "fields": [
+            "update_every",
+            "hostname",
+            "community",
+            "manual_profiles"
+          ]
+        },
+        {
+          "title": "Ping",
+          "fields": [
+            "ping_only",
+            "ping"
+          ]
+        },
+        {
+          "title": "Vnode",
+          "fields": [
+            "create_vnode",
+            "vnode_device_down_threshold",
+            "vnode"
+          ]
+        },
+        {
+          "title": "Options",
+          "fields": [
+            "options"
+          ]
+        },
+        {
+          "title": "SNMPv3",
+          "fields": [
+            "user"
+          ]
+        }
+      ]
+    }
+  }
+}

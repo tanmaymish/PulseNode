@@ -1,0 +1,277 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-docker
+      plugin_name: go.d.plugin
+      module_name: docker
+      alternative_monitored_instances: []
+      monitored_instance:
+        name: Docker
+        link: https://www.docker.com/
+        categories:
+          - data-collection.containers-and-vms
+        icon_filename: docker.svg
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - container
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Docker containers state, health status and more.
+        method_description: |
+          It connects to the Docker instance via a TCP or UNIX socket and executes the following commands:
+          
+          - [System info](https://docs.docker.com/engine/api/v1.43/#tag/System/operation/SystemInfo).
+          - [List images](https://docs.docker.com/engine/api/v1.43/#tag/Image/operation/ImageList).
+          - [List containers](https://docs.docker.com/engine/api/v1.43/#tag/Container/operation/ContainerList).
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: Requires netdata user to be in the docker group.
+      default_behavior:
+        auto_detection:
+          description: |
+            It discovers instances running on localhost by attempting to connect to a known Docker UNIX socket: `/var/run/docker.sock`.
+        limits:
+          description: ""
+        performance_impact:
+          description: |
+            Enabling `collect_container_size` may result in high CPU usage depending on the version of Docker Engine.
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: go.d/docker.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: address
+              description: "Docker daemon address. For TCP sockets: `tcp://IP:PORT`."
+              default_value: unix:///var/run/docker.sock
+              required: true
+              group: Target
+            - name: timeout
+              description: Request timeout (seconds).
+              default_value: 2
+              required: false
+              group: Target
+
+            - name: container_selector
+              description: "Container selector. Defines which containers to monitor. Uses [simple patterns](https://github.com/netdata/netdata/tree/master/src/libnetdata/simple_pattern#readme)."
+              default_value: "*"
+              required: false
+              group: Filters
+
+            - name: collect_container_size
+              description: Collect container writable layer size metrics.
+              default_value: no
+              required: false
+              group: Metrics Selection
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            enabled: true
+            title: Config
+          list:
+            - name: Basic
+              description: An example configuration.
+              folding:
+                enabled: false
+              config: |
+                jobs:
+                  - name: local
+                    address: 'unix:///var/run/docker.sock'
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    address: 'unix:///var/run/docker.sock'
+                
+                  - name: remote
+                    address: 'tcp://203.0.113.10:2375'
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: docker_container_unhealthy
+        metric: docker.container_health_status
+        info: ${label:container_name} docker container health status is unhealthy
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/docker.conf
+    functions:
+      description: |
+        This collector exposes real-time functions for interactive troubleshooting in the Live tab.
+      list:
+        - id: container-ls
+          name: Containers
+          description: |
+            Retrieves container list data equivalent to `docker ps -a`.
+
+            This function calls the Docker Container List API with `all=true` and returns both running and non-running containers in a table similar to Docker CLI output.
+
+            Use cases:
+            - Quickly inspect all containers (running, exited, paused, dead) from Netdata
+            - Correlate container lifecycle with metric changes and alerts
+            - Verify exposed ports, image tags, and container names without shell access
+          parameters: []
+          returns:
+            description: Container inventory from Docker Engine. Each row represents one container returned by `docker ps -a`.
+            columns:
+              - name: CONTAINER ID
+                type: string
+                unit: ""
+                description: Short container ID (12 characters).
+              - name: IMAGE
+                type: string
+                unit: ""
+                description: Container image reference.
+              - name: COMMAND
+                type: string
+                unit: ""
+                description: Container command as reported by Docker API.
+              - name: CREATED
+                type: string
+                unit: ""
+                description: Human-readable container creation age (for example, '5 days ago').
+              - name: STATUS
+                type: string
+                unit: ""
+                description: Docker status string (for example, 'Up 3 weeks' or 'Exited (0) 4 weeks ago').
+              - name: State (Raw)
+                type: string
+                unit: ""
+                visibility: hidden
+                description: Raw Docker state value (for example, running, exited, paused, restarting, dead).
+              - name: PORTS
+                type: string
+                unit: ""
+                description: Published or exposed ports summary.
+              - name: NAMES
+                type: string
+                unit: ""
+                description: Container name.
+              - name: Container ID (Full)
+                type: string
+                unit: ""
+                visibility: hidden
+                description: Full 64-character container ID.
+              - name: Created (Unix)
+                type: integer
+                unit: "seconds"
+                visibility: hidden
+                description: Container creation timestamp in Unix seconds.
+          performance: |
+            Executes a single Docker API request (`ContainerList` with `all=true`):<br/>• No per-container inspect requests are issued<br/>• Response size grows with total container count<br/>• Large histories with many stopped containers may return more rows
+          security: |
+            Exposes container metadata that may include sensitive details:<br/>• Container command text may include runtime arguments<br/>• Image names, ports, and container names are visible<br/>• Restrict access to authorized operators
+          availability: |
+            Available when:<br/>• Docker collector is initialized and connected<br/>• Docker API list-containers request succeeds<br/>• Returns HTTP 503 while collector is initializing<br/>• Returns HTTP 500 on Docker API errors<br/>• Returns HTTP 504 on timeout
+          require_cloud: true
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: These metrics refer to the entire monitored application.
+          labels: []
+          metrics:
+            - name: docker.containers_state
+              description: Total number of Docker containers in various states
+              unit: containers
+              chart_type: stacked
+              dimensions:
+                - name: running
+                - name: paused
+                - name: stopped
+            - name: docker.containers_health_status
+              description: Total number of Docker containers in various health states
+              unit: containers
+              chart_type: line
+              dimensions:
+                - name: healthy
+                - name: unhealthy
+                - name: not_running_unhealthy
+                - name: starting
+                - name: no_healthcheck
+            - name: docker.images
+              description: Total number of Docker images in various states
+              unit: images
+              chart_type: stacked
+              dimensions:
+                - name: active
+                - name: dangling
+            - name: docker.images_size
+              description: Total size of all Docker images
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: size
+        - name: container
+          description: Metrics related to containers. Each container provides its own set of the following metrics.
+          labels:
+            - name: container_name
+              description: The container's name
+            - name: image
+              description: The image name the container uses
+          metrics:
+            - name: docker.container_state
+              description: Docker container state
+              unit: state
+              chart_type: line
+              dimensions:
+                - name: running
+                - name: paused
+                - name: exited
+                - name: created
+                - name: restarting
+                - name: removing
+                - name: dead
+            - name: docker.container_health_status
+              description: Docker container health status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: healthy
+                - name: unhealthy
+                - name: not_running_unhealthy
+                - name: starting
+                - name: no_healthcheck
+            - name: docker.container_writeable_layer_size
+              description: Docker container writable layer size
+              unit: size
+              chart_type: line
+              dimensions:
+                - name: writeable_layer

@@ -1,0 +1,41 @@
+update_every: 123
+hostname: "ok"
+create_vnode: yes
+vnode_device_down_threshold: 123
+manual_profiles:
+  - "ok"
+
+vnode:
+  name: "ok"
+  guid: "ok"
+  hostname: "ok"
+  labels:
+    ok: "ok"
+
+community: "ok"
+
+user:
+  name: "ok"
+  level: "ok"
+  auth_proto: "ok"
+  auth_key: "ok"
+  priv_proto: "ok"
+  priv_key: "ok"
+  context_name: "ok"
+
+options:
+  port: 123
+  retries: 123
+  timeout: 123
+  version: "ok"
+  max_request_size: 123
+  max_repetitions: 123
+
+ping_only: yes
+ping:
+  enabled: yes
+  network: ip
+  privileged: yes
+  interface: eth0
+  packets: 5
+  interval: 123.123

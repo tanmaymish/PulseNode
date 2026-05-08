@@ -1,0 +1,1331 @@
+plugin_name: go.d.plugin
+modules:
+  - &module
+    meta: &meta
+      id: collector-go.d.plugin-mysql
+      plugin_name: go.d.plugin
+      module_name: mysql
+      monitored_instance:
+        name: MySQL
+        link: https://www.mysql.com/
+        categories:
+          - data-collection.databases
+        icon_filename: mysql.svg
+      related_resources:
+        integrations:
+          list:
+            - plugin_name: apps.plugin
+              module_name: apps
+            - plugin_name: cgroups.plugin
+              module_name: /sys/fs/cgroup
+              monitored_instance_name: Containers
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - "db"
+        - "database"
+        - "mysql"
+        - "maria"
+        - "mariadb"
+        - "sql"
+    overview:
+      multi_instance: true
+      data_collection:
+        metrics_description: |
+          This collector monitors the health and performance of MySQL servers and collects general statistics, replication and user metrics.
+        method_description: |
+          It connects to the MySQL instance via a TCP or UNIX socket and executes the following commands:
+          
+          Executed queries:
+          
+          - `SELECT VERSION();`
+          - `SHOW GLOBAL STATUS;`
+          - `SHOW ENGINE INNODB STATUS;`
+          - `SHOW GLOBAL VARIABLES;`
+          - `SHOW SLAVE STATUS;` or `SHOW ALL SLAVES STATUS;` (MariaDBv10.2+) or `SHOW REPLICA STATUS;` (MySQL 8.0.22+)
+          - `SHOW USER_STATISTICS;` (MariaDBv10.1.1+)
+          - `SELECT TIME,USER FROM INFORMATION_SCHEMA.PROCESSLIST;`
+      default_behavior:
+        auto_detection:
+          description: |
+            By default, it detects instances running on localhost by trying to connect as root and netdata using known MySQL TCP sockets:
+
+            - 127.0.0.1:3306
+            - "[::1]:3306"
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+      additional_permissions:
+        description: ""
+      supported_platforms:
+        include: []
+        exclude: []
+    setup:
+      prerequisites:
+        list:
+          - title: Create netdata user
+            description: |
+              A user account should have the following [permissions](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html):
+
+              - [`USAGE`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_usage)
+              - [`REPLICATION CLIENT`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-client)
+              - [`PROCESS`](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_process)
+
+              To create the `netdata` user with these permissions, execute the following in the MySQL shell:
+
+              - **MySQL and MariaDB < 10.5.9**
+
+                ```mysql
+                CREATE USER 'netdata'@'localhost';
+                GRANT USAGE, REPLICATION CLIENT, PROCESS ON *.* TO 'netdata'@'localhost';
+                FLUSH PRIVILEGES;
+                ```
+
+              - **MariaDB >= 10.5.9**
+
+                For MariaDB 10.5.9 and later, use the `SLAVE MONITOR` privilege instead of `REPLICATION CLIENT`:
+
+                ```mysql
+                CREATE USER 'netdata'@'localhost';
+                GRANT USAGE, SLAVE MONITOR, PROCESS ON *.* TO 'netdata'@'localhost';
+                FLUSH PRIVILEGES;
+                ```
+
+              The `netdata` user will have the ability to connect to the MySQL server on localhost without a password.
+              It will only be able to gather statistics without being able to alter or affect operations in any way.
+          - title: Enable User Statistics (optional)
+            description: |
+              To collect per-user statistics, the [User Statistics](https://mariadb.com/docs/server/ha-and-performance/optimization-and-tuning/query-optimizations/statistics-for-optimizing-queries/user-statistics) plugin must be enabled.
+              This is available for **MariaDB** and **Percona**, not for MySQL.
+
+              By default, statistics are not collected. To enable the plugin, set the `userstat` system variable.
+
+              - **In a configuration file** (persistent, requires restart):
+
+                ```ini
+                [mariadb]
+                userstat = 1
+                ```
+
+              - **Dynamically** (takes effect immediately, does not persist across restarts):
+
+                ```mysql
+                SET GLOBAL userstat=1;
+                ```
+      configuration:
+        file:
+          name: go.d/mysql.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 5
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: dsn
+              description: "MySQL server DSN (Data Source Name). See [DSN syntax](https://github.com/go-sql-driver/mysql#dsn-data-source-name)."
+              default_value: root@tcp(localhost:3306)/
+              required: true
+              group: Target
+            - name: my.cnf
+              description: Path to a `my.cnf` file to read connection settings from the `[client]` section.
+              default_value: ""
+              required: false
+              group: Target
+            - name: timeout
+              description: Query timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: functions.top_queries.disabled
+              description: Disable the [top-queries](#top-queries) function.
+              default_value: false
+              required: false
+              group: Functions
+            - name: functions.top_queries.timeout
+              description: Query timeout (seconds). Uses collector timeout if not set.
+              default_value: ""
+              required: false
+              group: Functions
+            - name: functions.top_queries.limit
+              description: Maximum number of queries to return.
+              default_value: 500
+              required: false
+              group: Functions
+
+            - name: functions.deadlock_info.disabled
+              description: Disable the [deadlock-info](#deadlock-info) function.
+              default_value: false
+              required: false
+              group: Functions
+            - name: functions.deadlock_info.timeout
+              description: Query timeout (seconds). Uses collector timeout if not set.
+              default_value: ""
+              required: false
+              group: Functions
+
+            - name: functions.error_info.disabled
+              description: Disable the [error-info](#error-info) function.
+              default_value: false
+              required: false
+              group: Functions
+            - name: functions.error_info.timeout
+              description: Query timeout (seconds). Uses collector timeout if not set.
+              default_value: ""
+              required: false
+              group: Functions
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: TCP socket
+              description: An example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    dsn: netdata@tcp(127.0.0.1:3306)/
+            - name: Unix socket
+              description: An example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    dsn: netdata@unix(/var/lib/mysql/mysql.sock)/
+            - name: Connection with password
+              description: An example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    dsn: netconfig:password@tcp(127.0.0.1:3306)/
+            - name: my.cnf
+              description: An example configuration.
+              config: |
+                jobs:
+                  - name: local
+                    my.cnf: '/etc/my.cnf'
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+
+                Local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    dsn: netdata@tcp(127.0.0.1:3306)/
+                
+                  - name: remote
+                    dsn: netconfig:password@tcp(203.0.113.0:3306)/
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: mysql_10s_slow_queries
+        metric: mysql.queries
+        info: number of slow queries in the last 10 seconds
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_10s_table_locks_immediate
+        metric: mysql.table_locks
+        info: number of table immediate locks in the last 10 seconds
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_10s_table_locks_waited
+        metric: mysql.table_locks
+        info: number of table waited locks in the last 10 seconds
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_10s_waited_locks_ratio
+        metric: mysql.table_locks
+        info: ratio of waited table locks over the last 10 seconds
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_connections
+        metric: mysql.connections_active
+        info: client connections utilization
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_replication
+        metric: mysql.slave_status
+        info: "replication status (0: stopped, 1: working)"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_replication_lag
+        metric: mysql.slave_behind
+        info: difference between the timestamp of the latest transaction processed by the SQL thread and the timestamp of the same transaction when it was processed on the master
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_galera_cluster_size_max_2m
+        metric: mysql.galera_cluster_size
+        info: maximum galera cluster size in the last 2 minutes starting one minute ago
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_galera_cluster_size
+        metric: mysql.galera_cluster_size
+        info: current galera cluster size, compared to the maximum size in the last 2 minutes
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_galera_cluster_state_warn
+        metric: mysql.galera_cluster_state
+        info: galera node state is either Donor/Desynced or Joined
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_galera_cluster_state_crit
+        metric: mysql.galera_cluster_state
+        info: galera node state is either Undefined or Joining or Error
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+      - name: mysql_galera_cluster_status
+        metric: mysql.galera_cluster_status
+        info: galera node is part of a nonoperational component. This occurs in cases of multiple membership changes that result in a loss of Quorum or in cases of split-brain situations.
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/mysql.conf
+    functions:
+      description: |
+        This collector exposes real-time functions for interactive troubleshooting in the Live tab.
+      list:
+        - id: top-queries
+          name: Top Queries
+          description: |
+            Retrieves aggregated SQL query performance metrics from MySQL [performance_schema.events_statements_summary_by_digest](https://dev.mysql.com/doc/refman/8.4/en/performance-schema-statement-summary-tables.html) table.
+
+            This function queries the `events_statements_summary_by_digest` table which contains aggregated statistics for SQL statements grouped by their digest (normalized query pattern). The function dynamically detects available columns based on your MySQL/MariaDB version.
+
+            Use cases:
+            - Identify slow queries that consume the most execution time
+            - Find frequently executed queries that may benefit from optimization
+            - Detect queries with high lock time, errors, or table scans
+
+            Query text is truncated at 4096 characters for display purposes.
+          parameters:
+            - id: __sort
+              name: Filter By
+              description: Select the primary sort column. The available options depend on your MySQL/MariaDB version and include metrics like total execution time, number of calls, lock time, errors, rows examined, and more. Defaults to total execution time.
+              type: select
+              required: true
+              default: totalTime
+              options: []
+          returns:
+            description: Aggregated statement statistics from Performance Schema, grouped by query digest. Each row represents a unique query pattern with cumulative metrics across all executions.
+            columns:
+              - name: Digest
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Unique hash identifier for the normalized query pattern. Queries with the same structure (different literal values) share the same digest."
+              - name: Query
+                type: string
+                unit: ""
+                description: "Normalized SQL query text with literals replaced by placeholders (e.g., '?' for values). Truncated to 4096 characters."
+              - name: Schema
+                type: string
+                unit: ""
+                description: "Database schema name where the query was executed. Empty string for queries without a schema context."
+              - name: Calls
+                type: integer
+                unit: ""
+                description: "Total number of times this query pattern has been executed since server startup or since the digest table was last truncated."
+              - name: Total Time
+                type: duration
+                unit: "milliseconds"
+                description: "Cumulative execution time across all executions. High values indicate queries that consume significant server resources."
+              - name: Min Time
+                type: duration
+                unit: "milliseconds"
+                visibility: hidden
+                description: "Minimum execution time observed for a single execution. Helps identify variability in query performance."
+              - name: Avg Time
+                type: duration
+                unit: "milliseconds"
+                description: "Average execution time (total time divided by calls). Use this to compare performance across different query patterns."
+              - name: Max Time
+                type: duration
+                unit: "milliseconds"
+                visibility: hidden
+                description: "Maximum execution time observed for a single execution. Large gaps between min and max may indicate performance instability."
+              - name: Lock Time
+                type: duration
+                unit: "milliseconds"
+                description: "Total time spent waiting for table locks across all executions. High lock time may indicate contention from concurrent transactions."
+              - name: Errors
+                type: integer
+                unit: ""
+                description: "Total number of times this query pattern resulted in an error. Non-zero values require investigation into the underlying issue."
+              - name: Warnings
+                type: integer
+                unit: ""
+                description: "Total number of times this query pattern generated warnings. Warnings may indicate data type conversions, NULL handling issues, or other non-critical problems."
+              - name: Error Attribution
+                type: string
+                unit: ""
+                description: "Status of error detail attribution for this query. Values: enabled (error details available), no_data (no recent error for this digest), not_enabled (statement history consumers disabled), not_supported (required columns unavailable)."
+              - name: Error Number
+                type: integer
+                unit: ""
+                description: "Most recent error number observed for this query digest (when error attribution is enabled)."
+              - name: SQL State
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "SQLSTATE code for the most recent error (when error attribution is enabled)."
+              - name: Error Message
+                type: string
+                unit: ""
+                description: "Most recent error message for this query digest (when error attribution is enabled)."
+              - name: Rows Affected
+                type: integer
+                unit: ""
+                description: "Total number of rows modified by INSERT, UPDATE, DELETE, or REPLACE statements. Useful for tracking write workloads."
+              - name: Rows Sent
+                type: integer
+                unit: ""
+                description: "Total number of rows returned to the client by SELECT statements. High values may indicate result sets that are too large."
+              - name: Rows Examined
+                type: integer
+                unit: ""
+                description: "Total number of rows read during query execution. A high ratio of rows examined to rows sent suggests missing or inefficient indexes."
+              - name: Temp Disk Tables
+                type: integer
+                unit: ""
+                description: "Total number of temporary tables created on disk across all executions. Disk-based temporary tables are significantly slower than in-memory tables and may indicate memory pressure or complex operations requiring sorting/grouping."
+              - name: Temp Tables
+                type: integer
+                unit: ""
+                description: "Total number of temporary tables created (both in-memory and on-disk). High values suggest frequent sorting, grouping, or DISTINCT operations."
+              - name: Full Joins
+                type: integer
+                unit: ""
+                description: "Total number of joins that performed a full table scan without using an index. These are typically very expensive operations that should be optimized."
+              - name: Full Range Joins
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total number of joins that used a range scan on the first table. Less efficient than indexed joins but better than full scans."
+              - name: Select Range
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total number of joins that used a range on the first table for row selection."
+              - name: Select Range Check
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total number of joins that checked each row after scanning for key ranges. Very inefficient operation."
+              - name: Select Scan
+                type: integer
+                unit: ""
+                description: "Total number of joins that performed a full scan of the first table. Indicates missing indexes or suboptimal join order."
+              - name: Sort Merge Passes
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total number of merge passes performed during sort operations. More passes indicate larger datasets that exceed sort buffer size."
+              - name: Sort Range
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total number of sorts that used a range scan."
+              - name: Sort Rows
+                type: integer
+                unit: ""
+                description: "Total number of rows sorted across all executions. High values indicate frequent sorting operations on large datasets."
+              - name: Sort Scan
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total number of sorts that required a full table scan."
+              - name: No Index Used
+                type: integer
+                unit: ""
+                description: "Total number of executions where no index was used for table access. These queries are prime candidates for index optimization."
+              - name: No Good Index Used
+                type: integer
+                unit: ""
+                visibility: hidden
+                description: "Total number of executions where a non-optimal index was used. Indicates that while an index exists, a better one might improve performance."
+              - name: First Seen
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Timestamp when this query pattern was first observed. Helps identify new queries that may have been introduced by application changes."
+              - name: Last Seen
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Timestamp when this query pattern was last executed. Can help identify stale queries that are no longer in use."
+              - name: P95 Time
+                type: duration
+                unit: "milliseconds"
+                description: "95th percentile execution time. 95% of executions completed within this time. Available in MySQL 8.0+. Useful for understanding typical performance."
+              - name: P99 Time
+                type: duration
+                unit: "milliseconds"
+                description: "99th percentile execution time. 99% of executions completed within this time. Available in MySQL 8.0+. Helps identify outlier slow executions."
+              - name: P99.9 Time
+                type: duration
+                unit: "milliseconds"
+                visibility: hidden
+                description: "99.9th percentile execution time. Available in MySQL 8.0+. Identifies extreme outliers in query performance."
+              - name: Sample Query
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Example of an actual query execution with literal values preserved. Available in MySQL 8.0+. Helpful for understanding the exact queries being executed."
+              - name: Sample Seen
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Timestamp when the sample query was captured. Available in MySQL 8.0+."
+              - name: Sample Time
+                type: duration
+                unit: "milliseconds"
+                visibility: hidden
+                description: "Execution time of the captured sample query. Available in MySQL 8.0+."
+              - name: CPU Time
+                type: duration
+                unit: "milliseconds"
+                description: "Total CPU time consumed across all executions. Available in MySQL 8.0.28+. Helps identify CPU-intensive queries."
+              - name: Max Controlled Memory
+                type: integer
+                unit: ""
+                description: "Maximum memory controlled by the query executor for this query pattern. Available in MySQL 8.0.31+. Helps identify memory-intensive operations."
+              - name: Max Total Memory
+                type: integer
+                unit: ""
+                description: "Maximum total memory used by this query pattern including both controlled and uncontrolled allocations. Available in MySQL 8.0.31+."
+          performance: |
+            Queries the `events_statements_summary_by_digest` table:<br/>• On busy servers with high query throughput, the digest table can grow large<br/>• Default limit of 500 rows balances usefulness with performance
+          security: |
+            Query text may contain unmasked literal values including potentially sensitive data:<br/>• Personal information in WHERE clauses or INSERT values<br/>• Business data and internal identifiers<br/>• Access should be restricted to authorized personnel only
+          prerequisites:
+            list:
+              - title: Enable performance_schema statement digest collection
+                description: |
+                  Performance Schema must be enabled and statement instrumentation must be configured to collect digest statistics.
+
+                  1. Check if Performance Schema is enabled:
+                     ```sql
+                     SELECT @@performance_schema;
+                     ```
+
+                  2. Check statement instrumentation configuration:
+                     ```sql
+                     SELECT * FROM performance_schema.setup_consumers
+                     WHERE NAME LIKE '%statement%';
+                     ```
+
+                  3. The following consumer should be enabled:
+                     - `events_statements_summary_by_digest`
+
+                  4. Enable statement consumers if needed:
+                     ```sql
+                     UPDATE performance_schema.setup_consumers
+                     SET ENABLED = 'YES'
+                     WHERE NAME LIKE 'events_statements%';
+                     ```
+
+                     :::info
+
+                     - Changes to `setup_consumers` take effect immediately without requiring a server restart.
+                     - MariaDB also supports the `events_statements_summary_by_digest` table. Exact consumer names may vary by MariaDB version, so checking `setup_consumers` first as shown above is recommended.
+
+                     :::
+
+                  5. Verify digest table contains data:
+                     ```sql
+                     SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest;
+                     ```
+
+                     Note: Statement digest data is accumulated since server startup or since the table was last truncated. To reset statistics:
+                     ```sql
+                     TRUNCATE TABLE performance_schema.events_statements_summary_by_digest;
+                     ```
+
+                     Ensure that statement instruments are enabled in the Performance Schema so that statement digest statistics are collected. Refer to your MySQL or MariaDB version documentation for the appropriate configuration options.
+              - title: Grant SELECT permission on Performance Schema tables
+                description: |
+                  The netdata user must have SELECT permission on Performance Schema tables. The standard collector permissions
+                  (USAGE, REPLICATION CLIENT, PROCESS) do not automatically include Performance Schema access.
+
+                  1. Grant the required permission:
+                     ```sql
+                     GRANT SELECT ON performance_schema.* TO 'netdata'@'localhost';
+                     FLUSH PRIVILEGES;
+                     ```
+
+                     :::info
+
+                     The host part (`'localhost'`) should match how the netdata user connects. If connecting via TCP/IP, you may need `'netdata'@'%'` or a specific IP address instead.
+
+                     :::
+
+                  2. Verify access:
+                     ```sql
+                     -- As the netdata user:
+                     SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest;
+                     ```
+          availability: |
+            Available when:<br/>• The collector has successfully connected to MySQL<br/>• Performance Schema is enabled with statement digest collection<br/>• Returns HTTP 503 if collector is still initializing<br/>• Returns HTTP 500 if the query fails<br/>• Returns HTTP 504 if the query times out
+          require_cloud: true
+        - id: deadlock-info
+          name: Deadlock Info
+          description: |
+            Retrieves the latest detected InnoDB deadlock from `SHOW ENGINE INNODB STATUS`.
+
+            The output is parsed to attribute the deadlock to the participating transactions and their query text, lock mode, lock status, and wait resource.
+
+            Use cases:
+            - Identify which query was chosen as the deadlock victim
+            - Inspect the waiting lock resource and lock mode
+            - Correlate deadlocks with application changes or deployment events
+
+            Query text is truncated at 4096 characters for display purposes.
+          parameters: []
+          returns:
+            description: Parsed deadlock participants from the latest detected deadlock. Each row represents one transaction involved in the deadlock.
+            columns:
+              - name: Row ID
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Unique row identifier composed of deadlock ID and process ID."
+              - name: Deadlock ID
+                type: string
+                unit: ""
+                description: "Identifier for the deadlock event, used to group participating transactions."
+              - name: Timestamp
+                type: timestamp
+                unit: ""
+                description: "Timestamp of the deadlock event. Parsed from the deadlock section when available; otherwise the function execution time."
+              - name: Process ID
+                type: string
+                unit: ""
+                description: "MySQL thread id of the transaction involved in the deadlock."
+              - name: Connection ID
+                type: integer
+                unit: ""
+                description: "Numeric connection identifier when the process id is numeric."
+              - name: ECID
+                type: integer
+                unit: ""
+                description: "Execution context id (engine-specific). This is typically null for MySQL and reserved for cross-engine consistency."
+              - name: Victim
+                type: string
+                unit: ""
+                description: "\"true\" when the transaction was chosen as the deadlock victim and rolled back; otherwise \"false\"."
+              - name: Query
+                type: string
+                unit: ""
+                description: "SQL query text for the transaction involved in the deadlock. Truncated to 4096 characters."
+              - name: Lock Mode
+                type: string
+                unit: ""
+                description: "Lock mode reported for the waiting lock (for example X or S)."
+              - name: Lock Status
+                type: string
+                unit: ""
+                description: "Lock status for the transaction. WAITING indicates the transaction was waiting on a lock."
+              - name: Wait Resource
+                type: string
+                unit: ""
+                description: "Lock resource line from InnoDB status showing what the transaction was waiting on."
+              - name: Database
+                type: string
+                unit: ""
+                description: "Database name when it can be inferred. This may be empty or null depending on the deadlock output."
+          performance: |
+            Executes `SHOW ENGINE INNODB STATUS` on demand:<br/>• Not part of regular collection<br/>• Query cost depends on server load and the size of the InnoDB status output
+          security: |
+            Query text and wait resource strings may include unmasked literal values including sensitive data (PII/secrets):<br/>• SQL literals such as emails, IDs, or tokens<br/>• Schema and table names that may be sensitive in some environments<br/>• Restrict dashboard access to authorized personnel only
+          prerequisites:
+            list:
+              - title: Enable deadlock-info function in Netdata
+                description: |
+                  Set `deadlock_info_function_enabled: true` in the `go.d/mysql.conf` job.
+              - title: Grant PROCESS privilege
+                description: |
+                  The monitoring user must have PROCESS privilege to run `SHOW ENGINE INNODB STATUS`.
+          availability: |
+            Available when:<br/>• The collector has successfully connected to MySQL<br/>• `deadlock_info_function_enabled` is true<br/>• The account can run `SHOW ENGINE INNODB STATUS` (PROCESS privilege)<br/>• Returns HTTP 200 with empty data when no deadlock is found<br/>• Returns HTTP 403 when PROCESS privilege is missing<br/>• Returns HTTP 500 if the query fails<br/>• Returns HTTP 504 if the query times out<br/>• Returns HTTP 561 when the deadlock section cannot be parsed<br/>• Returns HTTP 503 if the collector is still initializing or the function is disabled
+          require_cloud: true
+        - id: error-info
+          name: Error Info
+          description: |
+            Retrieves recent SQL errors from Performance Schema statement history tables.
+
+            This function reads `performance_schema.events_statements_history_long` when enabled,
+            otherwise falls back to `performance_schema.events_statements_history`. It reports the
+            most recent error per query digest, including error number, SQLSTATE, and message.
+
+            Use cases:
+            - Identify recent query errors and their messages
+            - Correlate errors to query patterns (digest)
+            - Validate error rates seen in top-queries
+
+            Error messages are truncated by Performance Schema (usually 128 characters).
+          parameters: []
+          returns:
+            description: Most recent error per query digest from Performance Schema history tables.
+            columns:
+              - name: Digest
+                type: string
+                unit: ""
+                visibility: hidden
+                description: "Unique hash identifier for the normalized query pattern."
+              - name: Query
+                type: string
+                unit: ""
+                description: "Normalized query text when available (digest text or SQL text)."
+              - name: Schema
+                type: string
+                unit: ""
+                description: "Database schema name when available."
+              - name: Error Number
+                type: integer
+                unit: ""
+                description: "MySQL error number for the most recent error of this digest."
+              - name: SQL State
+                type: string
+                unit: ""
+                description: "SQLSTATE code for the most recent error."
+              - name: Error Message
+                type: string
+                unit: ""
+                description: "Error message for the most recent error."
+          performance: |
+            Reads Performance Schema statement history tables on demand:<br/>• Not part of regular collection<br/>• Query cost depends on history table size and server load
+          security: |
+            Error messages and query text may include unmasked literals (PII/secrets).<br/>• Restrict dashboard access to authorized personnel only
+          prerequisites:
+            list:
+              - title: Enable error-info function in Netdata
+                description: |
+                  Set `error_info_function_enabled: true` in the `go.d/mysql.conf` job.
+              - title: Enable statement history consumers
+                description: |
+                  Ensure `events_statements_history` and/or `events_statements_history_long` consumers are enabled.
+              - title: Grant SELECT on Performance Schema
+                description: |
+                  The monitoring user must have SELECT on `performance_schema.*` to read statement history tables.
+          availability: |
+            Available when:<br/>• The collector has successfully connected to MySQL<br/>• `error_info_function_enabled` is true<br/>• Performance Schema statement history consumers are enabled (history and/or history_long)<br/>• Returns HTTP 200 with empty data when no errors are found<br/>• Returns HTTP 503 when required consumers are not enabled or function disabled<br/>• Returns HTTP 500 if the query fails<br/>• Returns HTTP 504 if the query times out
+          require_cloud: true
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability:
+        - MySQL
+        - MariaDB
+        - Percona
+      scopes:
+        - name: global
+          description: These metrics refer to the entire monitored application.
+          labels: []
+          metrics:
+            - name: mysql.net
+              description: Bandwidth
+              unit: kilobits/s
+              chart_type: area
+              dimensions:
+                - name: in
+                - name: out
+            - name: mysql.queries
+              description: Queries
+              unit: queries/s
+              chart_type: line
+              dimensions:
+                - name: queries
+                - name: questions
+                - name: slow_queries
+            - name: mysql.queries_type
+              description: Queries By Type
+              unit: queries/s
+              chart_type: stacked
+              dimensions:
+                - name: select
+                - name: delete
+                - name: update
+                - name: insert
+                - name: replace
+            - name: mysql.handlers
+              description: Handlers
+              unit: handlers/s
+              chart_type: line
+              dimensions:
+                - name: commit
+                - name: delete
+                - name: prepare
+                - name: read_first
+                - name: read_key
+                - name: read_next
+                - name: read_prev
+                - name: read_rnd
+                - name: read_rnd_next
+                - name: rollback
+                - name: savepoint
+                - name: savepointrollback
+                - name: update
+                - name: write
+            - name: mysql.table_open_cache_overflows
+              description: Table open cache overflows
+              unit: overflows/s
+              chart_type: line
+              dimensions:
+                - name: open_cache
+            - name: mysql.table_locks
+              description: Table Locks
+              unit: locks/s
+              chart_type: line
+              dimensions:
+                - name: immediate
+                - name: waited
+            - name: mysql.join_issues
+              description: Table Select Join Issues
+              unit: joins/s
+              chart_type: line
+              dimensions:
+                - name: full_join
+                - name: full_range_join
+                - name: range
+                - name: range_check
+                - name: scan
+            - name: mysql.sort_issues
+              description: Table Sort Issues
+              unit: issues/s
+              chart_type: line
+              dimensions:
+                - name: merge_passes
+                - name: range
+                - name: scan
+            - name: mysql.tmp
+              description: Tmp Operations
+              unit: events/s
+              chart_type: line
+              dimensions:
+                - name: disk_tables
+                - name: files
+                - name: tables
+            - name: mysql.connections
+              description: Connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: all
+                - name: aborted
+            - name: mysql.connections_active
+              description: Active Connections
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: active
+                - name: limit
+                - name: max_active
+            - name: mysql.threads
+              description: Threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: connected
+                - name: cached
+                - name: running
+            - name: mysql.threads_created
+              description: Threads Creation Rate
+              unit: threads/s
+              chart_type: line
+              dimensions:
+                - name: created
+            - name: mysql.thread_cache_misses
+              description: Threads Cache Misses
+              unit: misses
+              chart_type: line
+              dimensions:
+                - name: misses
+            - name: mysql.innodb_io
+              description: InnoDB I/O Bandwidth
+              unit: KiB/s
+              chart_type: line
+              dimensions:
+                - name: read
+                - name: write
+            - name: mysql.innodb_io_ops
+              description: InnoDB I/O Operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: reads
+                - name: writes
+                - name: fsyncs
+            - name: mysql.innodb_io_pending_ops
+              description: InnoDB Pending I/O Operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: reads
+                - name: writes
+                - name: fsyncs
+            - name: mysql.innodb_log
+              description: InnoDB Log Operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: waits
+                - name: write_requests
+                - name: writes
+            - name: mysql.innodb_redo_log_activity
+              description: InnoDB Redo Log Activity
+              unit: B/s
+              chart_type: line
+              dimensions:
+                - name: redo_written
+                - name: checkpointed
+            - name: mysql.innodb_redo_log_occupancy
+              description: InnoDB Redo Log Occupancy
+              unit: percentage
+              chart_type: area
+              dimensions:
+                - name: occupancy
+            - name: mysql.innodb_redo_log_checkpoint_age
+              description: InnoDB Redo Log Checkpoint Age
+              unit: B
+              chart_type: line
+              dimensions:
+                - name: age
+            - name: mysql.innodb_cur_row_lock
+              description: InnoDB Current Row Locks
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: current waits
+            - name: mysql.innodb_rows
+              description: InnoDB Row Operations
+              unit: operations/s
+              chart_type: area
+              dimensions:
+                - name: inserted
+                - name: read
+                - name: updated
+                - name: deleted
+            - name: mysql.innodb_buffer_pool_pages
+              description: InnoDB Buffer Pool Pages
+              unit: pages
+              chart_type: line
+              dimensions:
+                - name: data
+                - name: dirty
+                - name: free
+                - name: misc
+                - name: total
+            - name: mysql.innodb_buffer_pool_pages_flushed
+              description: InnoDB Buffer Pool Flush Pages Requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: flush_pages
+            - name: mysql.innodb_buffer_pool_bytes
+              description: InnoDB Buffer Pool Bytes
+              unit: MiB
+              chart_type: line
+              dimensions:
+                - name: data
+                - name: dirty
+            - name: mysql.innodb_buffer_pool_read_ahead
+              description: InnoDB Buffer Pool Read Pages
+              unit: pages/s
+              chart_type: line
+              dimensions:
+                - name: all
+                - name: evicted
+            - name: mysql.innodb_buffer_pool_read_ahead_rnd
+              description: InnoDB Buffer Pool Random Read-Aheads
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: read-ahead
+            - name: mysql.innodb_buffer_pool_ops
+              description: InnoDB Buffer Pool Operations
+              unit: operations/s
+              chart_type: area
+              dimensions:
+                - name: disk_reads
+                - name: wait_free
+            - name: mysql.innodb_os_log
+              description: InnoDB OS Log Pending Operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: fsyncs
+                - name: writes
+            - name: mysql.innodb_os_log_fsync_writes
+              description: InnoDB OS Log Operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: fsyncs
+            - name: mysql.innodb_os_log_io
+              description: InnoDB OS Log Bandwidth
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: write
+            - name: mysql.innodb_deadlocks
+              description: InnoDB Deadlocks
+              unit: operations/s
+              chart_type: area
+              dimensions:
+                - name: deadlocks
+            - name: mysql.files
+              description: Open Files
+              unit: files
+              chart_type: line
+              dimensions:
+                - name: files
+            - name: mysql.files_rate
+              description: Opened Files Rate
+              unit: files/s
+              chart_type: line
+              dimensions:
+                - name: files
+            - name: mysql.connection_errors
+              description: Connection Errors
+              unit: errors/s
+              chart_type: line
+              dimensions:
+                - name: accept
+                - name: internal
+                - name: max
+                - name: peer_addr
+                - name: select
+                - name: tcpwrap
+            - name: mysql.opened_tables
+              description: Opened Tables
+              unit: tables/s
+              chart_type: line
+              dimensions:
+                - name: tables
+            - name: mysql.open_tables
+              description: Open Tables
+              unit: tables
+              chart_type: area
+              dimensions:
+                - name: cache
+                - name: tables
+            - name: mysql.process_list_fetch_query_duration
+              description: Process List Fetch Duration
+              unit: milliseconds
+              chart_type: line
+              dimensions:
+                - name: duration
+            - name: mysql.process_list_queries_count
+              description: Queries Count
+              unit: queries
+              chart_type: stacked
+              dimensions:
+                - name: system
+                - name: user
+            - name: mysql.process_list_longest_query_duration
+              description: Longest Query Duration
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: duration
+            - name: mysql.qcache_ops
+              description: QCache Operations
+              unit: queries/s
+              chart_type: line
+              dimensions:
+                - name: hits
+                - name: lowmem_prunes
+                - name: inserts
+                - name: not_cached
+            - name: mysql.qcache
+              description: QCache Queries in Cache
+              unit: queries
+              chart_type: line
+              dimensions:
+                - name: queries
+            - name: mysql.qcache_freemem
+              description: QCache Free Memory
+              unit: MiB
+              chart_type: area
+              dimensions:
+                - name: free
+            - name: mysql.qcache_memblocks
+              description: QCache Memory Blocks
+              unit: blocks
+              chart_type: line
+              dimensions:
+                - name: free
+                - name: total
+            - name: mysql.galera_writesets
+              description: Replicated Writesets
+              unit: writesets/s
+              chart_type: line
+              dimensions:
+                - name: rx
+                - name: tx
+            - name: mysql.galera_bytes
+              description: Replicated Bytes
+              unit: KiB/s
+              chart_type: area
+              dimensions:
+                - name: rx
+                - name: tx
+            - name: mysql.galera_queue
+              description: Galera Queue
+              unit: writesets
+              chart_type: line
+              dimensions:
+                - name: rx
+                - name: tx
+            - name: mysql.galera_conflicts
+              description: Replication Conflicts
+              unit: transactions
+              chart_type: area
+              dimensions:
+                - name: bf_aborts
+                - name: cert_fails
+            - name: mysql.galera_flow_control
+              description: Flow Control
+              unit: ms
+              chart_type: area
+              dimensions:
+                - name: paused
+            - name: mysql.galera_cluster_status
+              description: Cluster Component Status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: primary
+                - name: non_primary
+                - name: disconnected
+            - name: mysql.galera_cluster_state
+              description: Cluster Component State
+              unit: state
+              chart_type: line
+              dimensions:
+                - name: undefined
+                - name: joining
+                - name: donor
+                - name: joined
+                - name: synced
+                - name: error
+            - name: mysql.galera_cluster_size
+              description: Number of Nodes in the Cluster
+              unit: nodes
+              chart_type: line
+              dimensions:
+                - name: nodes
+            - name: mysql.galera_cluster_weight
+              description: The Total Weight of the Current Members in the Cluster
+              unit: weight
+              chart_type: line
+              dimensions:
+                - name: weight
+            - name: mysql.galera_connected
+              description: Cluster Connection Status
+              unit: boolean
+              chart_type: line
+              dimensions:
+                - name: connected
+            - name: mysql.galera_ready
+              description: Accept Queries Readiness Status
+              unit: boolean
+              chart_type: line
+              dimensions:
+                - name: ready
+            - name: mysql.galera_open_transactions
+              description: Open Transactions
+              unit: transactions
+              chart_type: line
+              dimensions:
+                - name: open
+            - name: mysql.galera_thread_count
+              description: Total Number of WSRep (applier/rollbacker) Threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: threads
+            - name: mysql.key_blocks
+              description: MyISAM Key Cache Blocks
+              unit: blocks
+              chart_type: line
+              dimensions:
+                - name: unused
+                - name: used
+                - name: not_flushed
+            - name: mysql.key_requests
+              description: MyISAM Key Cache Requests
+              unit: requests/s
+              chart_type: area
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: mysql.key_disk_ops
+              description: MyISAM Key Cache Disk Operations
+              unit: operations/s
+              chart_type: area
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: mysql.binlog_cache
+              description: Binlog Cache
+              unit: transactions/s
+              chart_type: line
+              dimensions:
+                - name: disk
+                - name: all
+            - name: mysql.binlog_stmt_cache
+              description: Binlog Statement Cache
+              unit: statements/s
+              chart_type: line
+              dimensions:
+                - name: disk
+                - name: all
+        - name: connection
+          description: These metrics refer to the replication connection.
+          labels: []
+          metrics:
+            - name: mysql.slave_behind
+              description: Slave Behind Seconds
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: seconds
+            - name: mysql.slave_status
+              description: I/O / SQL Thread Running State
+              unit: boolean
+              chart_type: line
+              dimensions:
+                - name: sql_running
+                - name: io_running
+        - name: user
+          description: These metrics refer to the MySQL user.
+          labels:
+            - name: user
+              description: username
+          metrics:
+            - name: mysql.userstats_cpu
+              description: User CPU Time
+              unit: percentage
+              chart_type: line
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: used
+            - name: mysql.userstats_rows
+              description: User Rows Operations
+              unit: operations/s
+              chart_type: stacked
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: read
+                - name: sent
+                - name: updated
+                - name: inserted
+                - name: deleted
+            - name: mysql.userstats_commands
+              description: User Commands
+              unit: commands/s
+              chart_type: stacked
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: select
+                - name: update
+                - name: other
+            - name: mysql.userstats_denied_commands
+              description: User Denied Commands
+              unit: commands/s
+              chart_type: stacked
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: denied
+            - name: mysql.userstats_created_transactions
+              description: User Transactions
+              unit: transactions/s
+              chart_type: area
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: commit
+                - name: rollback
+            - name: mysql.userstats_binlog_written
+              description: User Binlog Written
+              unit: B/s
+              chart_type: line
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: written
+            - name: mysql.userstats_empty_queries
+              description: User Empty Queries
+              unit: queries/s
+              chart_type: line
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: empty
+            - name: mysql.userstats_connections
+              description: User Created Connections
+              unit: connections/s
+              chart_type: line
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: created
+            - name: mysql.userstats_lost_connections
+              description: User Lost Connections
+              unit: connections/s
+              chart_type: line
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: lost
+            - name: mysql.userstats_denied_connections
+              description: User Denied Connections
+              unit: connections/s
+              chart_type: line
+              availability:
+                - MariaDB
+                - Percona
+              dimensions:
+                - name: denied
+  - <<: *module
+    meta:
+      <<: *meta
+      id: collector-go.d.plugin-mariadb
+      monitored_instance:
+        name: MariaDB
+        link: https://mariadb.org/
+        icon_filename: mariadb.svg
+        categories:
+          - data-collection.databases
+  - <<: *module
+    meta:
+      <<: *meta
+      id: collector-go.d.plugin-percona_mysql
+      monitored_instance:
+        name: Percona MySQL
+        link: https://www.percona.com/software/mysql-database/percona-server
+        icon_filename: percona.svg
+        categories:
+          - data-collection.databases

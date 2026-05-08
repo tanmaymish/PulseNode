@@ -1,0 +1,269 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-zookeeper
+      plugin_name: go.d.plugin
+      module_name: zookeeper
+      monitored_instance:
+        name: ZooKeeper
+        link: https://zookeeper.apache.org/
+        categories:
+          - data-collection.applications
+        icon_filename: zookeeper.svg
+      keywords:
+        - zookeeper
+      info_provided_to_referring_integrations:
+        description: ""
+      related_resources:
+        integrations:
+          list:
+            - plugin_name: apps.plugin
+              module_name: apps
+    overview:
+      data_collection:
+        metrics_description: ""
+        method_description: |
+          It connects to the Zookeeper instance via a TCP and executes the following commands:
+          
+          - [mntr](https://zookeeper.apache.org/doc/r3.4.8/zookeeperAdmin.html#sc_zkCommands).
+      default_behavior:
+        auto_detection:
+          description: |
+            By default, it detects instances running on localhost by attempting to connect using known ZooKeeper TCP sockets:
+            
+            - 127.0.0.1:2181
+            - 127.0.0.1:2182
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+      additional_permissions:
+        description: ""
+      multi_instance: true
+      supported_platforms:
+        include: []
+        exclude: []
+    setup:
+      prerequisites:
+        list:
+          - title: Whitelist `mntr` command
+            description: |
+              Add `mntr` to Zookeeper's [4lw.commands.whitelist](https://zookeeper.apache.org/doc/current/zookeeperAdmin.html#sc_4lw).
+      configuration:
+        file:
+          name: "go.d/zookeeper.conf"
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: address
+              description: Zookeeper server address (`IP:PORT`).
+              default_value: 127.0.0.1:2181
+              required: true
+              group: Target
+            - name: timeout
+              description: Connection, read, write, and TLS handshake timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: use_tls
+              description: Enable TLS for the connection.
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              description: Local server.
+              config: |
+                jobs:
+                  - name: local
+                    address: 127.0.0.1:2181
+            - name: TLS with self-signed certificate
+              description: Zookeeper with TLS and self-signed certificate.
+              config: |
+                jobs:
+                  - name: local
+                    address: 127.0.0.1:2181
+                    use_tls: yes
+                    tls_skip_verify: yes
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    address: 127.0.0.1:2181
+                
+                  - name: remote
+                    address: 192.0.2.1:2181
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: ZooKeeper server
+          description: These metrics refer to ZooKeeper servers.
+          labels: []
+          metrics:
+            - name: zookeeper.requests
+              description: Outstanding Requests
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: outstanding
+            - name: zookeeper.requests_latency
+              description: Requests Latency
+              unit: ms
+              chart_type: line
+              dimensions:
+                - name: min
+                - name: avg
+                - name: max
+            - name: zookeeper.stale_requests
+              description: Stale Requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: stale
+            - name: zookeeper.stale_requests_dropped
+              description: Stale Requests Dropped
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: dropped
+            - name: zookeeper.connections
+              description: Alive Connections
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: alive
+            - name: zookeeper.connections_dropped
+              description: Dropped Connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: dropped
+            - name: zookeeper.connections_rejected
+              description: Rejected Connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: rejected
+            - name: zookeeper.auth_fails
+              description: Auth Fails
+              unit: fails/s
+              chart_type: line
+              dimensions:
+                - name: auth
+            - name: zookeeper.global_sessions
+              description: Global Sessions
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: global
+            - name: zookeeper.server_state
+              description: Server State
+              unit: state
+              chart_type: line
+              dimensions:
+                - name: leader
+                - name: follower
+                - name: observer
+                - name: standalone
+            - name: zookeeper.throttled_ops
+              description: Throttled Operations
+              unit: ops/s
+              chart_type: line
+              dimensions:
+                - name: throttled
+            - name: zookeeper.packets
+              description: Packets
+              unit: pps
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: zookeeper.file_descriptor
+              description: Open File Descriptors
+              unit: file descriptors
+              chart_type: line
+              dimensions:
+                - name: open
+            - name: zookeeper.nodes
+              description: Number of Nodes
+              unit: nodes
+              chart_type: line
+              dimensions:
+                - name: znode
+                - name: ephemerals
+            - name: zookeeper.watches
+              description: Number of Watches
+              unit: watches
+              chart_type: line
+              dimensions:
+                - name: watches
+            - name: zookeeper.approximate_data_size
+              description: Approximate Data Tree Size
+              unit: KiB
+              chart_type: line
+              dimensions:
+                - name: size
+            - name: zookeeper.uptime
+              description: Uptime
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: uptime

@@ -1,0 +1,169 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-dns_query
+      plugin_name: go.d.plugin
+      module_name: dns_query
+      monitored_instance:
+        name: DNS query
+        link: ""
+        icon_filename: network-wired.svg
+        categories:
+          - data-collection.synthetic-testing
+      keywords:
+        - dns
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+    overview:
+      data_collection:
+        metrics_description: |
+          This module monitors DNS query round-trip time (RTT).
+        method_description: ""
+      supported_platforms:
+        include: []
+        exclude: []
+      multi_instance: true
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: ""
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: go.d/dns_query.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: All options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: domains
+              description: One or more domains/subdomains to query. A random domain from the list is selected on each iteration.
+              default_value: "[]"
+              required: true
+              group: Target
+            - name: servers
+              description: DNS servers to query. If empty, servers from `/etc/resolv.conf` are used automatically.
+              default_value: "[]"
+              required: false
+              group: Target
+            - name: timeout
+              description: Query timeout (seconds).
+              default_value: 2
+              required: false
+              group: Target
+            - name: port
+              description: DNS server port.
+              default_value: 53
+              required: false
+              group: Target
+            - name: network
+              description: "DNS query transport protocol. Options: `udp`, `tcp`, `tcp-tls`."
+              default_value: udp
+              required: false
+              group: Target
+
+            - name: record_types
+              description: "DNS record types to query. Options: A, AAAA, CNAME, MX, NS, PTR, TXT, SOA, SPF, SRV."
+              default_value: A
+              required: false
+              group: DNS Query
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Specific DNS servers
+              description: An example configuration using Google's public DNS servers.
+              config: |
+                jobs:
+                  - name: job1
+                    record_types:
+                      - A
+                      - AAAA
+                    domains:
+                      - google.com
+                      - github.com
+                      - reddit.com
+                    servers:
+                      - 8.8.8.8
+                      - 8.8.4.4
+            - name: System DNS
+              description: An example configuration using DNS servers from `/etc/resolv.conf`.
+              config: |
+                jobs:
+                  - name: job1
+                    record_types:
+                      - A
+                      - AAAA
+                    domains:
+                      - google.com
+                      - github.com
+                      - reddit.com
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: dns_query_query_status
+        metric: dns_query.query_status
+        info: "DNS request type ${label:record_type} to server ${label:server} is unsuccessful"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/dns_query.conf
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: server
+          description: These metrics refer to the DNS server.
+          labels:
+            - name: server
+              description: DNS server address.
+            - name: network
+              description: Network protocol name (tcp, udp, tcp-tls).
+            - name: record_type
+              description: DNS record type (e.g. A, AAAA, CNAME).
+          metrics:
+            - name: dns_query.query_status
+              description: DNS Query Status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: network_error
+                - name: dns_error
+            - name: dns_query.query_time
+              description: DNS Query Time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: query_time

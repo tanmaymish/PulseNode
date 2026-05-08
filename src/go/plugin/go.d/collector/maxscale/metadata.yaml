@@ -1,0 +1,309 @@
+plugin_name: go.d.plugin
+modules:
+  - meta:
+      id: collector-go.d.plugin-maxscale
+      plugin_name: go.d.plugin
+      module_name: maxscale
+      monitored_instance:
+        name: MaxScale
+        link: https://mariadb.com/kb/en/maxscale/
+        categories:
+          - data-collection.databases
+        icon_filename: maxscale.svg
+      related_resources:
+        integrations:
+          list: []
+      alternative_monitored_instances: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - maria
+        - mariadb
+        - maxscale
+        - database
+        - db
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors the activity and performance of MaxScale servers.
+        method_description: |
+          It sends HTTP requests to the MaxScale [REST API](https://mariadb.com/kb/en/maxscale-24-02rest-api/).
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector can automatically detect MaxScale instances running on:
+
+            - localhost that are listening on port 8989
+            - within Docker containers
+
+            > **Note that the MaxScale REST API requires a username and password**. 
+            > While Netdata can automatically detect MaxScale instances and create data collection jobs, these jobs will fail unless you provide the necessary credentials.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+      additional_permissions:
+        description: ""
+      multi_instance: true
+      supported_platforms:
+        include: []
+        exclude: []
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: go.d/maxscale.conf
+        options:
+          description: |
+            The following options can be defined globally: update_every, autodetection_retry.
+          folding:
+            title: Config options
+            enabled: true
+          list:
+            - name: update_every
+              description: Data collection interval (seconds).
+              default_value: 1
+              required: false
+              group: Collection
+            - name: autodetection_retry
+              description: Autodetection retry interval (seconds). Set 0 to disable.
+              default_value: 0
+              required: false
+              group: Collection
+
+            - name: url
+              description: Target endpoint URL.
+              default_value: http://127.0.0.1:8989
+              required: true
+              group: Target
+            - name: timeout
+              description: HTTP request timeout (seconds).
+              default_value: 1
+              required: false
+              group: Target
+
+            - name: username
+              description: Username for Basic HTTP authentication.
+              default_value: "admin"
+              required: false
+              group: HTTP Auth
+            - name: password
+              description: Password for Basic HTTP authentication.
+              default_value: "mariadb"
+              required: false
+              group: HTTP Auth
+            - name: bearer_token_file
+              description: "Path to a file containing a bearer token (used for `Authorization: Bearer`)."
+              default_value: ""
+              required: false
+              group: HTTP Auth
+
+            - name: tls_skip_verify
+              description: Skip TLS certificate and hostname verification (insecure).
+              default_value: no
+              required: false
+              group: TLS
+            - name: tls_ca
+              description: Path to CA bundle used to validate the server certificate.
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_cert
+              description: Path to client TLS certificate (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+            - name: tls_key
+              description: Path to client TLS private key (for mTLS).
+              default_value: ""
+              required: false
+              group: TLS
+
+            - name: proxy_url
+              description: HTTP proxy URL.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_username
+              description: Username for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+            - name: proxy_password
+              description: Password for proxy Basic HTTP authentication.
+              default_value: ""
+              required: false
+              group: Proxy
+
+            - name: method
+              description: HTTP method to use.
+              default_value: "GET"
+              required: false
+              group: Request
+            - name: body
+              description: Request body (e.g., for POST/PUT).
+              default_value: ""
+              required: false
+              group: Request
+            - name: headers
+              description: "Additional HTTP headers (one per line as key: value)."
+              default_value: ""
+              required: false
+              group: Request
+            - name: not_follow_redirects
+              description: Do not follow HTTP redirects.
+              default_value: no
+              required: false
+              group: Request
+            - name: force_http2
+              description: Force HTTP/2 (including h2c over TCP).
+              default_value: no
+              required: false
+              group: Request
+
+            - name: vnode
+              description: Associates this data collection job with a [Virtual Node](https://learn.netdata.cloud/docs/netdata-agent/configuration/organize-systems-metrics-and-alerts#virtual-nodes).
+              default_value: ""
+              required: false
+              group: Virtual Node
+        examples:
+          folding:
+            title: Config
+            enabled: true
+          list:
+            - name: Basic
+              description: A basic example configuration.
+              folding:
+                enabled: false
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8989
+                    username: admin
+                    password: mariadb
+            - name: HTTPS with self-signed certificate
+              description: MaxScale with enabled HTTPS and self-signed certificate.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8989
+                    username: admin
+                    password: mariadb
+                    tls_skip_verify: yes
+            - name: Multi-instance
+              description: |
+                > **Note**: When you define multiple jobs, their names must be unique.
+                
+                Collecting metrics from local and remote instances.
+              config: |
+                jobs:
+                  - name: local
+                    url: http://127.0.0.1:8989
+                    username: admin
+                    password: mariadb
+                
+                  - name: remote
+                    url: http://192.0.2.1:8989
+                    username: admin
+                    password: mariadb
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: These metrics refer to the monitored MaxScale instance.
+          labels: []
+          metrics:
+            - name: maxscale.poll_events
+              description: Poll Events
+              unit: events/s
+              chart_type: line
+              dimensions:
+                - name: reads
+                - name: writes
+                - name: accepts
+                - name: errors
+                - name: hangups
+            - name: maxscale.current_sessions
+              description: Current Sessions
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: sessions
+            - name: maxscale.current_zombie_connections
+              description: Current Zombie Connections
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: zombie
+            - name: maxscale.threads_by_state
+              description: Threads Count by State
+              unit: threads
+              chart_type: stacked
+              dimensions:
+                - name: active
+                - name: draining
+                - name: dormant
+            - name: maxscale.current_fds
+              description: Current Managed File Descriptors
+              unit: fds
+              chart_type: line
+              dimensions:
+                - name: managed
+            - name: maxscale.qc_cache_efficiency
+              description: QC Cache Efficiency
+              unit: requests/s
+              chart_type: stacked
+              dimensions:
+                - name: hits
+                - name: misses
+            - name: maxscale.qc_cache_operations
+              description: QC Cache Operations
+              unit: operations/s
+              chart_type: stacked
+              dimensions:
+                - name: inserts
+                - name: evictions
+            - name: maxscale.uptime
+              description: Uptime
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: uptime
+        - name: server
+          description: These metrics refer to the MariaDB server.
+          labels:
+            - name: server
+              description: Server ID.
+            - name: address
+              description: Server address.
+          metrics:
+            - name: maxscale.server_state
+              description: Server State
+              unit: state
+              chart_type: line
+              dimensions:
+                - name: master
+                - name: slave
+                - name: running
+                - name: down
+                - name: maintenance
+                - name: draining
+                - name: drained
+                - name: relay_master
+                - name: binlog_relay
+                - name: synced
+            - name: maxscale.server_current_connections
+              description: Server Current connections
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: connections

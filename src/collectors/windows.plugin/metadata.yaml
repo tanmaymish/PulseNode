@@ -1,0 +1,4376 @@
+plugin_name: windows.plugin
+modules:
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibProcessor
+      monitored_instance:
+        name: Processor
+        link: "https://learn.microsoft.com/en-us/windows-hardware/design/minimum/windows-processor-requirements"
+        categories:
+          - data-collection.operating-systems
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - processor
+        - CPU
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors processors statistics on host.
+        method_description: |
+          It queries Processor object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibProcessor]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: 10min_cpu_usage
+        metric: system.cpu
+        info: "Average CPU utilization over the last 10 minutes"
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/cpu.conf
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: System
+          description: "These metrics refer to the entire system."
+          labels: []
+          metrics:
+            - name: system.cpu
+              description: Total CPU utilization
+              unit: percentage
+              chart_type: stacked
+              dimensions:
+                - name: interrupts
+                - name: user
+                - name: privileged
+                - name: dpc
+        - name: CPU
+          description: "These metrics provide information about individual CPU cores."
+          labels:
+            - name: cpu
+              description: The identifier of the CPU core. On Windows systems, CPU cores are labeled as 'cpu0', 'cpu1', etc.
+          metrics:
+            - name: cpu.cpu
+              description: Core utilization
+              unit: percentage
+              chart_type: stacked
+              dimensions:
+                - name: interrupts
+                - name: user
+                - name: privileged
+                - name: dpc
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibMemory
+      monitored_instance:
+        name: Memory Statistics (Win)
+        link: "https://learn.microsoft.com/en-us/windows/win32/Memory/memory-management"
+        categories:
+          - data-collection.operating-systems
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - memory
+        - swap
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors swap and memory pool statistics on Windows systems.
+        method_description: |
+          It queries for the 'Memory' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibMemory]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: System
+          description: "These metrics refer to the entire system."
+          labels: []
+          metrics:
+            - name: mem.swap_iops
+              description: Swap Operations
+              unit: "operations/s"
+              chart_type: stacked
+              dimensions:
+                - name: read
+                - name: write
+            - name: mem.swapio
+              description: Swap I/O
+              unit: "KiB/s"
+              chart_type: area
+              dimensions:
+                - name: in
+                - name: out
+            - name: mem.system_pool_size
+              description: System Memory Pool
+              unit: "bytes"
+              chart_type: stacked
+              dimensions:
+                - name: paged
+                - name: non-paged
+            - name: mem.system_pool_paged
+              description: Paged System Memory Pool
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: resident
+            - name: mem.system_pool_allocs
+              description: System Pool Allocations
+              unit: "allocations/s"
+              chart_type: line
+              dimensions:
+                - name: paged
+                - name: non-paged
+            - name: mem.system_page_table_entries
+              description: Unused page table entries.
+              unit: "pages"
+              chart_type: line
+              dimensions:
+                - name: free
+            - name: mem.committed
+              description: Committed Memory
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: committed
+                - name: limit
+            - name: mem.system_cache
+              description: System Cache Memory
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: cache
+                - name: peak
+                - name: resident
+            - name: mem.page_lists
+              description: Memory Page Lists
+              unit: "bytes"
+              chart_type: stacked
+              dimensions:
+                - name: free
+                - name: modified
+                - name: standby_core
+                - name: standby_normal
+                - name: standby_reserve
+            - name: mem.system_code
+              description: System Code Memory
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: resident
+                - name: total
+            - name: mem.system_drivers
+              description: System Driver Memory
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: resident
+                - name: total
+            - name: mem.page_faults_breakdown
+              description: Memory Page Fault Breakdown
+              unit: "faults/s"
+              chart_type: line
+              dimensions:
+                - name: cache
+                - name: demand_zero
+                - name: transition
+                - name: write_copies
+            - name: mem.transition_repurposed
+              description: Transition Pages Repurposed
+              unit: "pages/s"
+              chart_type: line
+              dimensions:
+                - name: repurposed
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibProcesses
+      monitored_instance:
+        name: System statistics
+        link: "https://learn.microsoft.com/en-us/windows/win32/procthread/processes-and-threads"
+        categories:
+          - data-collection.operating-systems
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - process counts
+        - threads
+        - context switch
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors the current number of processes, threads, and context switches on Windows systems.
+        method_description: |
+          It queries the 'System' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibProcesses]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: System
+          description: "These metrics refer to the entire system."
+          labels: []
+          metrics:
+            - name: system.processes
+              description: System Processes
+              unit: "processes"
+              chart_type: line
+              dimensions:
+                - name: running
+            - name: system.threads
+              description: System Threads
+              unit: "threads"
+              chart_type: line
+              dimensions:
+                - name: threads
+            - name: system.ctxt
+              description: CPU Context Switches
+              unit: "context switches/s"
+              chart_type: line
+              dimensions:
+                - name: switches
+            - name: system.processor_queue_length
+              description: The number of threads in the processor queue.
+              unit: "threads"
+              chart_type: line
+              dimensions:
+                - name: threads
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibStorage
+      monitored_instance:
+        name: Physical and Logical Disk Performance Metrics
+        link: "https://learn.microsoft.com/en-us/windows/win32/fileio/disk-management"
+        categories:
+          - data-collection.storage
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - disk
+        - disks
+        - io
+        - volume
+        - physical
+        - logical
+    overview:
+      data_collection:
+        metrics_description: |
+          Detailed statistics for all disk devices and volumes.
+        method_description: |
+          It queries 'LogicalDisk' and 'PhysicalDisk' objects from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibStorage]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: System
+          description: "These metrics refer to the entire System."
+          labels: []
+          metrics:
+            - name: system.io
+              description: Disk I/O
+              unit: "KiB/s"
+              chart_type: area
+              dimensions:
+                - name: reads
+                - name: writes
+        - name: Logical Disk
+          description: "These metrics refer to Logical Disks."
+          labels:
+            - name: mount_point
+              description: "Drive letter or mount point path assigned by Windows (e.g., 'C:', 'D:')."
+            - name: driver_type
+              description: "Classification of the disk device (e.g., norootdir, removable, cdrom, ramdisk)."
+            - name: filesystem
+              description: "File system format used on the volume (e.g., NTFS, FAT32)."
+            - name: rw_mode
+              description: "Current read/write permissions status of the volume (read-only access, read and write access)."
+          metrics:
+            - name: disk.space
+              description: Disk Space Usage
+              unit: "GiB"
+              chart_type: stacked
+              dimensions:
+                - name: avail
+                - name: used
+        - name: Physical Disk
+          description: "These metrics refer to Physical Disks."
+          labels:
+            - name: mount_point
+              description: "Drive letter or mount point path assigned by Windows (e.g., 'C:', 'D:')."
+            - name: device
+              description: Manufacturer model name.
+            - name: model
+              description: The device model.
+            - name: device_id
+              description: Unique hardware identifier for the storage device within the system.
+          metrics:
+            - name: disk.io
+              description: Disk I/O Bandwidth
+              unit: "KiB/s"
+              chart_type: area
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: disk.avgsz
+              description: Average Completed I/O Operation Bandwidth
+              unit: "KiB/operation"
+              chart_type: area
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: disk.ops
+              description: Disk Completed I/O Operations
+              unit: "operations/s"
+              chart_type: line
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: disk.split
+              description: Split I/O Operations
+              unit: "operations/s"
+              chart_type: line
+              dimensions:
+                - name: discards
+            - name: disk.await
+              description: Average Completed I/O Operation Time
+              unit: "milliseconds/operation"
+              chart_type: line
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: disk.svctm
+              description: Average Service Time
+              unit: "milliseconds/operation"
+              chart_type: line
+              dimensions:
+                - name: svctm
+            - name: disk.util
+              description: Disk Utilization Time
+              unit: "percent"
+              chart_type: area
+              dimensions:
+                - name: utilization
+            - name: disk.busy
+              description: Disk Busy Time
+              unit: "milliseconds"
+              chart_type: area
+              dimensions:
+                - name: busy
+            - name: disk.iotime
+              description: Disk Total I/O Time
+              unit: "milliseconds/s"
+              chart_type: area
+              dimensions:
+                - name: reads
+                - name: writes
+            - name: disk.qops
+              description: Disk Current I/O Operations
+              unit: "operations"
+              chart_type: line
+              dimensions:
+                - name: operations
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibNetwork
+      monitored_instance:
+        name: Network Subsystem
+        link: "https://learn.microsoft.com/en-us/windows/win32/networking"
+        categories:
+          - data-collection.networking
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - network
+        - bandwidth
+        - ip
+        - udp
+        - tcp
+        - interface
+    overview:
+      data_collection:
+        metrics_description: |
+          Monitor network interface metrics about bandwidth, state, errors and more.
+        method_description: |
+          It queries 'Network Interface' and 'Network Adapter' objects from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibNetwork]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: inbound_packets_dropped_ratio
+        metric: net.drops
+        info: Ratio of inbound dropped packets for the network interface ${label:device} over the last 10 minutes
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/net.conf
+      - name: outbound_packets_dropped_ratio
+        metric: net.drops
+        info: Ratio of outbound dropped packets for the network interface ${label:device} over the last 10 minutes
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/net.conf
+      - name: 1m_received_traffic_overflow
+        metric: net.net
+        info: Average inbound utilization for the network interface ${label:device} over the last minute
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/net.conf
+      - name: 1m_sent_traffic_overflow
+        metric: net.net
+        info: Average outbound utilization for the network interface ${label:device} over the last minute
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/net.conf
+      - name: network_interface_output_queue_length
+        metric: net.queue_length
+        info: Output Queue Length on interface ${label:device} should be zero, otherwise there are delays and bottlenecks.
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/net.conf
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: System
+          description: "These metrics refer to the entire System."
+          labels: []
+          metrics:
+            - name: system.net
+              description: Physical Network Interfaces Aggregated Bandwidth
+              unit: "kilobits/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ip.tcppackets
+              description: TCP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ipv4.packets
+              description: IPv4 Packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+                - name: forwarded
+                - name: delivered
+            - name: ipv4.tcppackets
+              description: IPv4 TCP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ipv4.udppackets
+              description: IPv4 UDP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ipv4.icmp
+              description: IPv4 ICMP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ipv4.errors
+              description: IPv4 Errors
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: InDiscards
+                - name: OutDiscards
+                - name: OutNoRoutes
+                - name: InAddrErrors
+                - name: InHdrErrors
+                - name: InUnknownProtos
+            - name: ipv4.icmpmsg
+              description: IPv4 ICMP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: InEchoReps
+                - name: OutEchoReps
+                - name: InDestUnreachs
+                - name: OutDestUnreachs
+                - name: InRedirects
+                - name: OutRedirects
+                - name: InEchos
+                - name: OutEchos
+                - name: InRouterAdvert
+                - name: OutRouterAdvert
+                - name: InRouterSelect
+                - name: OutRouterSelect
+                - name: InTimeExcds
+                - name: OutTimeExcds
+                - name: InParmProbs
+                - name: OutParmProbs
+                - name: InTimestamps
+                - name: OutTimestamps
+                - name: InTimestampReps
+                - name: OutTimestampReps
+            - name: ipv6.packets
+              description: IPv6 Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+                - name: forwarded
+                - name: delivered
+            - name: ipv6.tcppackets
+              description: IPv6 TCP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ipv6.udppackets
+              description: IPv6 UDP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ipv6.icmp
+              description: IPv6 ICMP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: ipv6.errors
+              description: IPv6 Errors
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: InDiscards
+                - name: OutDiscards
+                - name: OutNoRoutes
+                - name: InAddrErrors
+                - name: InHdrErrors
+                - name: InUnknownProtos
+            - name: ipv6.icmpmsg
+              description: IPv6 ICMP Packets
+              unit: "packets/s"
+              chart_type: area
+              dimensions:
+                - name: InEchoReps
+                - name: OutEchoReps
+                - name: InDestUnreachs
+                - name: OutDestUnreachs
+                - name: InRedirects
+                - name: OutRedirects
+                - name: InEchos
+                - name: OutEchos
+                - name: InRouterAdvert
+                - name: OutRouterAdvert
+                - name: InRouterSelect
+                - name: OutRouterSelect
+                - name: InTimeExcds
+                - name: OutTimeExcds
+                - name: InParmProbs
+                - name: OutParmProbs
+                - name: InTimestamps
+                - name: OutTimestamps
+                - name: InTimestampReps
+                - name: OutTimestampReps
+        - name: network device
+          description: "These metrics refer to Network Interfaces."
+          labels:
+            - name: interface_type
+              description: "Classification of the network interface (real or virtual)."
+            - name: device
+              description: "System-assigned network interface identifier."
+          metrics:
+            - name: net.net
+              description: Bandwidth
+              unit: "kilobits/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: net.packets
+              description: Packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: net.speed
+              description: Interface Speed
+              unit: "kilobits/s"
+              chart_type: line
+              dimensions:
+                - name: speed
+            - name: net.errors
+              description: Interface Errors
+              unit: "errors/s"
+              chart_type: line
+              dimensions:
+                - name: inbound
+                - name: outbound
+            - name: net.drops
+              description: Interface Drops
+              unit: "drops/s"
+              chart_type: line
+              dimensions:
+                - name: inbound
+                - name: outbound
+            - name: net.queue_length
+              description: Interface Output Queue Length
+              unit: "packets"
+              chart_type: line
+              dimensions:
+                - name: length
+            - name: net.rsc_connections
+              description: Active TCP Connections Offloaded by RSC
+              unit: "connections"
+              chart_type: line
+              dimensions:
+                - name: connections
+            - name: net.rsc_packets
+              description: TCP RSC Coalesced Packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: packets
+            - name: net.rsc_exceptions
+              description: TCP RSC Exceptions
+              unit: "exceptions/s"
+              chart_type: line
+              dimensions:
+                - name: exceptions
+            - name: net.rsc_average_packet_size
+              description: TCP RSC Average Packet Size
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: average
+            - name: net.chimney_connections
+              description: Active TCP Connections Offloaded with Chimney
+              unit: "connections"
+              chart_type: line
+              dimensions:
+                - name: connections
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibSMB
+      monitored_instance:
+        name: SMB Server Shares
+        link: "https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-smb/"
+        categories:
+          - data-collection.storage
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - smb
+        - share
+        - file sharing
+    overview:
+      data_collection:
+        metrics_description: |
+          Monitor SMB server share activity and throughput counters on Windows systems.
+        method_description: |
+          It queries the 'SMB Server Shares' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            This collector is disabled by default. When enabled, it automatically detects all available SMB share instances and metrics.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibSMB]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: SMB Share
+          description: "These metrics refer to SMB shares."
+          labels:
+            - name: share
+              description: SMB share name as exposed by the Windows SMB Server Shares performance object.
+          metrics:
+            - name: smb.server_shares_current_open_file_count
+              description: Current total count of open files on the SMB share.
+              unit: "files"
+              chart_type: line
+              dimensions:
+                - name: open
+            - name: smb.server_shares_tree_connect_count
+              description: Count of user connections to the SMB share.
+              unit: "connections"
+              chart_type: line
+              dimensions:
+                - name: connections
+            - name: smb.server_shares_received_bytes
+              description: Received bytes on the SMB share.
+              unit: "bytes/s"
+              chart_type: line
+              dimensions:
+                - name: received
+            - name: smb.server_shares_write_requests
+              description: Write requests on the SMB share.
+              unit: "requests/s"
+              chart_type: line
+              dimensions:
+                - name: writes
+            - name: smb.server_shares_read_requests
+              description: Read requests on the SMB share.
+              unit: "requests/s"
+              chart_type: line
+              dimensions:
+                - name: reads
+            - name: smb.server_shares_metadata_requests
+              description: Metadata requests on the SMB share.
+              unit: "requests/s"
+              chart_type: line
+              dimensions:
+                - name: metadata
+            - name: smb.server_shares_sent_bytes
+              description: Sent bytes on the SMB share.
+              unit: "bytes/s"
+              chart_type: line
+              dimensions:
+                - name: sent
+            - name: smb.server_shares_files_opened
+              description: Files opened on the SMB share.
+              unit: "files/s"
+              chart_type: line
+              dimensions:
+                - name: opened
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibObjects
+      monitored_instance:
+        name: Semaphore statistics
+        link: "https://learn.microsoft.com/en-us/windows/win32/sync/semaphore-objects"
+        categories:
+          - data-collection.operating-systems
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - ipc
+        - semaphores
+    overview:
+      data_collection:
+        metrics_description: |
+          Inter-Process Communication (IPC) enables different processes to communicate and coordinate with each other. This collector monitors IPC semaphores, which are synchronization tools that:
+
+          - Control access to shared resources (like files, memory, or devices).
+          - Ensure only one process can access a resource at a time.
+          - Prevent conflicts between competing processes.
+        method_description: |
+          It queries for the 'Objects' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibObjects]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: System
+          description: "These metrics refer to the entire system."
+          labels: []
+          metrics:
+            - name: system.ipc_semaphores
+              description: IPC Semaphores
+              unit: "semaphores"
+              chart_type: area
+              dimensions:
+                - name: semaphores
+            - name: system.ipc_mutexes
+              description: IPC Mutexes
+              unit: "mutexes"
+              chart_type: area
+              dimensions:
+                - name: mutexes
+  - meta:
+      plugin_name: windows.plugin
+      module_name: GetHardwareInfo
+      monitored_instance:
+        name: Hardware information collected from kernel ring.
+        link: "https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/"
+        categories:
+          - data-collection.hardware-and-sensors
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - cpu
+        - temperature
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors cpu temperature on Windows systems.
+        method_description: |
+          It reads `msr` register using netdata_driver.sys driver.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+                This optional feature requires the Netdata Driver (netdata_driver.sys) to be installed on the host.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:GetHardwareInfo]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: global
+          description: "This metric show latest CPU temperature."
+          labels: []
+          metrics:
+            - name: cpu.temperature
+              description: Core temperature
+              unit: "Celcius"
+              chart_type: line
+              dimensions:
+                - name: a dimension per core
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibThermalZone
+      monitored_instance:
+        name: System thermal zone
+        link: "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/design-guide"
+        categories:
+          - data-collection.hardware-and-sensors
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - thermal
+        - temperature
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors thermal zone statistics on Windows systems.
+        method_description: |
+          It queries for the 'Thermal Zone Information' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          section_name: "[plugin:windows:PerflibThermalZone]"
+          name: "netdata.conf"
+          description: "The Netdata main configuration file."
+        options:
+          description: ""
+          folding:
+            title: "Config Option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 5
+              required: false
+        examples:
+          folding:
+            enabled: false
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Thermal zone
+          description: "These metrics refer to a Thermal zone"
+          labels: []
+          metrics:
+            - name: system.thermalzone_temperature
+              description: Thermal zone temperature
+              unit: celsius
+              chart_type: line
+              dimensions:
+                - name: temperature
+  - meta:
+      plugin_name: windows.plugin
+      module_name: GetPowerSupply
+      monitored_instance:
+        name: Power Supply (Win)
+        link: "https://learn.microsoft.com/en-us/windows/win32/power/power-management-portal"
+        categories:
+          - data-collection.hardware-and-sensors
+        icon_filename: "powersupply.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - power supply
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors power supply statistics on Windows systems.
+        method_description: |
+          It uses Windows Internal API to retrieve available data.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          section_name: "[plugin:windows:GetPowerSupply]"
+          name: "netdata.conf"
+          description: "The Netdata main configuration file."
+        options:
+          description: ""
+          folding:
+            title: "Config Option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: false
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts:
+      - name: power_supply_capacity
+        link: https://github.com/netdata/netdata/blob/master/src/health/health.d/power_supply_capacity.conf
+        metric: powersupply.capacity
+        info: percentage of remaining power supply capacity
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Power Supply
+          description: "These metrics refer to Power Supply device."
+          labels:
+            - name: device
+              description: Device name delivered as a Windows path.
+          metrics:
+            - name: powersupply.capacity
+              description: Battery capacity
+              unit: "percentage"
+              chart_type: line
+              dimensions:
+                - name: capacity
+            - name: powersupply.voltage
+              description: Power supply voltage
+              unit: "V"
+              chart_type: line
+              dimensions:
+                - name: now
+  - meta:
+      plugin_name: windows.plugin
+      module_name: GetSensors
+      monitored_instance:
+        name: Sensors
+        link: "https://learn.microsoft.com/en-us/windows/win32/sensorsapi/portal"
+        categories:
+          - data-collection.hardware-and-sensors
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - Sensors
+        - Windows
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors sensors on Windows systems.
+        method_description: |
+          It uses Sensors API to retrieve available data.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          section_name: "[plugin:windows:GetSensors]"
+          name: "netdata.conf"
+          description: "The Netdata main configuration file."
+        options:
+          description: ""
+          folding:
+            title: "Config Option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list:
+            - name: Specific Sensors
+              description: You can add custom sensor information by creating a dedicated sensor section.
+              folding:
+                enabled: false
+              config: |
+                [plugin:windows:GetSensors:Your Sensor Name]
+                  units = Speed
+                  multiplier = 100
+                  title = Current speed.
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Sensor
+          description: "These metrics refer to Sensors."
+          labels:
+            - name: name
+              description: Sensor friendly name.
+            - name: manufacturer
+              description: The sensor manufacturer.
+            - name: model
+              description: The sensor model.
+          metrics:
+            - name: system.hw.sensor.temperature.input
+              description: Sensor Temperature
+              unit: "Cel"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.power.input
+              description: Sensor Power
+              unit: "W"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.current.input
+              description: Sensor Current
+              unit: "A"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.humidity.input
+              description: Sensor Humidity
+              unit: "%"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.lux.input
+              description: Ambient light level
+              unit: "lx"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.color.input
+              description: Color temperature of light
+              unit: "Cel"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.voltage.input
+              description: Electrical potential
+              unit: "V"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.resistance.input
+              description: Electrical resistance
+              unit: "Ohms"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.capacitance.input
+              description: Electrical capacitance
+              unit: "F"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.inductance.input
+              description: Electrical indutance
+              unit: "H"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.pressure.input
+              description: Ambient atmospheric pressure
+              unit: "Pa"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.latitude.input
+              description: Geographic latitude
+              unit: "Degrees"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.longitude.input
+              description: Geographic longitude
+              unit: "Degrees"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.force.input
+              description: Force
+              unit: "N"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.gauge_pressure.input
+              description: Gauge Pressure
+              unit: "Pa"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.human_presence.input
+              description: Human presence
+              unit: "presence"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.human_proximity.input
+              description: Human proximity
+              unit: "m"
+              chart_type: line
+              dimensions:
+                - name: input
+            - name: system.hw.sensor.distance.input
+              description: Distance
+              unit: "m"
+              chart_type: line
+              dimensions:
+                - name: inputX
+                - name: inputY
+                - name: inputZ
+            - name: system.hw.sensor.acceleration.input
+              description: Acceleration
+              unit: "g"
+              chart_type: line
+              dimensions:
+                - name: inputX
+                - name: inputY
+                - name: inputZ
+            - name: system.hw.sensor.state.input
+              description: Current sensor state.
+              unit: "status"
+              chart_type: line
+              dimensions:
+                - name: ready
+                - name: not_available
+                - name: no_data
+                - name: initializing
+                - name: access_denied
+                - name: error
+            - name: system.hw.sensor.custom
+              description: Custom Chart
+              unit: "nd"
+              chart_type: line
+              dimensions:
+                - name: inputN
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibWebService
+      monitored_instance:
+        name: IIS
+        link: "https://www.iis.net/"
+        categories:
+          - data-collection.web-servers-and-proxies
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - IIS
+        - HTTP
+        - Web service
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors website requests and logins.
+        method_description: |
+          It queries the 'Web Service' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibWebService]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: IIS website
+          description: "These metrics refer to the IIS website."
+          labels:
+            - name: website
+              description: The name of the IIS website.
+          metrics:
+            - name: iis.website_traffic
+              description: Website traffic
+              unit: "bytes/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: iis.website_requests_rate
+              description: Website requests rate
+              unit: "requests/s"
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: iis.website_requests_by_type_rate
+              description: Website requests rate
+              unit: "requests/s"
+              chart_type: stacked
+              dimensions:
+                - name: options
+                - name: get
+                - name: post
+                - name: head
+                - name: put
+                - name: delete
+                - name: trace
+                - name: move
+                - name: copy
+                - name: mkcol
+                - name: propfind
+                - name: proppatch
+                - name: search
+                - name: lock
+                - name: unlock
+                - name: other
+            - name: iis.website_active_connections_count
+              description: Website active connections
+              unit: "connections"
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: iis.website_users_count
+              description: Website users with pending requests
+              unit: "users"
+              chart_type: stacked
+              dimensions:
+                - name: anonymous
+                - name: non_anonymous
+            - name: iis.website_connection_attempts_rate
+              description: Website connections attempts
+              unit: "attempts/s"
+              chart_type: line
+              dimensions:
+                - name: connection
+            - name: iis.website_isapi_extension_requests_count
+              description: ISAPI extension requests
+              unit: "requests"
+              chart_type: line
+              dimensions:
+                - name: isapi
+            - name: iis.website_isapi_extension_requests_rate
+              description: Website extensions request
+              unit: "requests/s"
+              chart_type: line
+              dimensions:
+                - name: isapi
+            - name: iis.website_ftp_file_transfer_rate
+              description: Website FTP file transfer rate
+              unit: "files/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: iis.website_logon_attempts_rate
+              description: Website logon attempts
+              unit: "attempts/s"
+              chart_type: line
+              dimensions:
+                - name: logon
+            - name: iis.website_errors_rate
+              description: Website errors
+              unit: "errors/s"
+              chart_type: stacked
+              dimensions:
+                - name: document_locked
+                - name: document_not_found
+            - name: iis.website_uptime
+              description: Website uptime
+              unit: "seconds"
+              chart_type: line
+              dimensions:
+                - name: uptime
+        - name: IIS Application Pool
+          description: "These metrics refer to the IIS application pool WAS (Windows Process Activation Service)."
+          labels:
+            - name: app
+              description: The name of the Application Pool.
+          metrics:
+            - name: iis.application_pool_current_status
+              description: IIS App Pool current status
+              unit: "status"
+              chart_type: line
+              dimensions:
+                - name: uninitialized
+                - name: initialized
+                - name: running
+                - name: disabling
+                - name: disabled
+                - name: shutdown_pending
+                - name: delete_pending
+            - name: iis.application_pool_current_worker_processes
+              description: IIS App Pool worker processes currently running
+              unit: "processes"
+              chart_type: line
+              dimensions:
+                - name: running
+            - name: iis.application_pool_worker_processes_created
+              description: IIS App Pool worker processes created
+              unit: "processes/s"
+              chart_type: line
+              dimensions:
+                - name: created
+            - name: iis.application_pool_maximum_worker_processes
+              description: IIS App Pool maximum created worker processes
+              unit: "processes"
+              chart_type: line
+              dimensions:
+                - name: created
+            - name: iis.application_pool_recent_worker_process_failures
+              description: IIS App Pool worker process failures during the rapid-fail protection interval
+              unit: "failures/s"
+              chart_type: line
+              dimensions:
+                - name: failures
+            - name: iis.application_pool_worker_process_failures
+              description: IIS App Pool worker process crashes
+              unit: "failures/s"
+              chart_type: line
+              dimensions:
+                - name: crash
+                - name: ping
+                - name: startup
+                - name: shutdown
+            - name: iis.application_pool_recycles
+              description: IIS App Pool recycles
+              unit: "recycles/s"
+              chart_type: line
+              dimensions:
+                - name: recycles
+            - name: iis.application_pool_uptime
+              description: IIS App Pool uptime
+              unit: "seconds"
+              chart_type: line
+              dimensions:
+                - name: uptime
+        - name: IIS W3SCV W3MP
+          description: "These metrics refer to the World Wide Web Publishing Service, the service responsible for hosting and serving web content."
+          labels:
+            - name: app
+              description: Application name.
+          metrics:
+            - name: iis.w3svc_w3wp_active_threads
+              description: Threads actively processing requests in the worker process
+              unit: "threads"
+              chart_type: line
+              dimensions:
+                - name: threads
+            - name: iis.w3svc_w3wp_requests_total
+              description: HTTP requests served by the worker process
+              unit: "requests/s"
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: iis.w3svc_w3wp_requests_active
+              description: Current number of requests being processed by the worker process
+              unit: "requests"
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: iis.w3svc_w3wp_file_cache_mem_usage
+              description: Current memory usage by the worker process
+              unit: "bytes"
+              chart_type: area
+              dimensions:
+                - name: used
+            - name: iis.w3svc_w3wp_files_cache_total
+              description: Files whose contents were ever added to the cache
+              unit: "files/s"
+              chart_type: line
+              dimensions:
+                - name: cached_files
+            - name: iis.w3svc_w3wp_files_flushed_total
+              description: File handles that have been removed from the cache
+              unit: "flushes/s"
+              chart_type: line
+              dimensions:
+                - name: file_handles
+            - name: iis.w3svc_w3wp_uri_cache_flushed
+              description: URI cache flushes
+              unit: "flushes/s"
+              chart_type: line
+              dimensions:
+                - name: cached_uris
+            - name: iis.w3svc_w3wp_total_uri_cached
+              description: URI information blocks added to the cache
+              unit: "blocks/s"
+              chart_type: line
+              dimensions:
+                - name: uri_cache_blocks
+            - name: iis.w3svc_w3wp_total_metadata_cached
+              description: Metadata information blocks added to the user-mode cache
+              unit: "blocks/s"
+              chart_type: line
+              dimensions:
+                - name: metadata_blocks
+            - name: iis.w3svc_w3wp_total_metadata_flushed
+              description: User-mode metadata cache flushes
+              unit: "flushes/s"
+              chart_type: line
+              dimensions:
+                - name: metadata_blocks
+            - name: iis.w3svc_w3wp_output_cache_active_flushed_items
+              description: Items flushed but still in memory for active responses
+              unit: "items"
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: iis.w3svc_w3wp_output_cache_memory_usage
+              description: Current number of bytes used by output cache
+              unit: "bytes"
+              chart_type: area
+              dimensions:
+                - name: used
+            - name: iis.w3svc_w3wp_output_cache_flushed_total
+              description: Flushes of output cache
+              unit: "flushes"
+              chart_type: line
+              dimensions:
+                - name: output_cache_entries
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibHyperV
+      monitored_instance:
+        name: Hyper-V
+        link: "https://learn.microsoft.com/en-us/virtualization/hyper-v-on-windows/about/"
+        categories:
+          - data-collection.containers-and-vms
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - hyperv
+        - virtualization
+        - vm
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors website requests and logins.
+        method_description: |
+          It queries the 'HyperV' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibHyperV]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 5
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Hyper-V
+          description: "These metrics refer to the Hyper-V instance."
+          labels: []
+          metrics:
+            - name: hyperv.vms_health
+              description: Virtual machines health status
+              unit: "vms"
+              chart_type: line
+              dimensions:
+                - name: ok
+                - name: critical
+            - name: hyperv.root_partition_io_tlb_flush
+              description: Root partition flushes of I/O TLBs
+              unit: "flushes/s"
+              chart_type: line
+              dimensions:
+                - name: gpa
+            - name: hyperv.root_partition_virtual_tlb_flush_entries
+              description: Root partition flushes of the entire virtual TLB
+              unit: "flushes/s"
+              chart_type: line
+              dimensions:
+                - name: flushes
+            - name: hyperv.root_partition_virtual_tlb_pages
+              description: Root partition pages used by the virtual TLB
+              unit: "pages"
+              chart_type: line
+              dimensions:
+                - name: used
+            - name: hyperv.root_partition_address_space
+              description: Root partition address spaces in the virtual TLB
+              unit: "address spaces"
+              chart_type: line
+              dimensions:
+                - name: address_spaces
+            - name: hyperv.root_partition_attached_devices
+              description: Root partition attached devices
+              unit: "devices"
+              chart_type: line
+              dimensions:
+                - name: attached
+            - name: hyperv.root_partition_device_dma_errors
+              description: Root partition illegal DMA requests
+              unit: "requests"
+              chart_type: line
+              dimensions:
+                - name: illegal_dma
+            - name: hyperv.root_partition_device_interrupt_errors
+              description: Root partition illegal interrupt requests
+              unit: "requests"
+              chart_type: line
+              dimensions:
+                - name: illegal_interrupt
+            - name: hyperv.root_partition_device_interrupt_throttle_events
+              description: Root partition throttled interrupts
+              unit: "events"
+              chart_type: line
+              dimensions:
+                - name: throttling
+            - name: hyperv.root_partition_deposited_pages
+              description: Root partition deposited pages
+              unit: "pages"
+              chart_type: line
+              dimensions:
+                - name: gpa
+            - name: hyperv.root_partition_device_space_pages
+              description: Root partition device space pages
+              unit: "pages"
+              chart_type: line
+              dimensions:
+                - name: 4K
+                - name: 2M
+                - name: 1G
+            - name: hyperv.root_partition_gpa_space_pages
+              description: Root partition GPA space pages
+              unit: "pages"
+              chart_type: line
+              dimensions:
+                - name: 4K
+                - name: 2M
+                - name: 1G
+            - name: hyperv.root_partition_gpa_space_modifications
+              description: Root partition GPA space modifications
+              unit: "modifications/s"
+              chart_type: line
+              dimensions:
+                - name: gpa
+
+        - name: Virtual Machine
+          description: "These metrics refer to the Virtual Machine."
+          labels:
+            - name: vm_name
+              description: The name of the Virtual Machine.
+          metrics:
+            - name: hyperv.vm_cpu_usage
+              description: VM CPU usage
+              unit: "percentage"
+              chart_type: area
+              dimensions:
+                - name: usage
+            - name: hyperv.vm_cpu_usage_by_run_context
+              description: VM CPU usage by run context
+              unit: "percentage"
+              chart_type: stacked
+              dimensions:
+                - name: guest
+                - name: hypervisor
+                - name: remote
+            - name: hyperv.vm_memory_physical
+              description: VM assigned memory
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: assigned
+            - name: hyperv.vm_memory_physical_guest_visible
+              description: VM guest visible memory
+              unit: "bytes"
+              chart_type: line
+              dimensions:
+                - name: visible
+                - name: available
+            - name: hyperv.vm_memory_pressure_current
+              description: VM Memory Pressure
+              unit: "percentage"
+              chart_type: line
+              dimensions:
+                - name: pressure
+            - name: hyperv.vm_vid_physical_pages_allocated
+              description: VM physical pages allocated
+              unit: "pages"
+              chart_type: line
+              dimensions:
+                - name: allocated
+            - name: hyperv.vm_vid_remote_physical_pages
+              description: VM physical pages not allocated from the preferred NUMA node
+              unit: "pages"
+              chart_type: line
+              dimensions:
+                - name: remote_physical
+        - name: Virtual Machine Storage Device
+          description: "These metrics refer to the Virtual Machine Storage Device."
+          labels:
+            - name: vm_storage_device
+              description: The name of the Storage Device.
+          metrics:
+            - name: hyperv.vm_storage_device_bytes
+              description: VM storage device IO
+              unit: "bytes/s"
+              chart_type: area
+              dimensions:
+                - name: read
+                - name: write
+            - name: hyperv.vm_storage_device_operations
+              description: VM storage device IOPS"
+              unit: "operations/s"
+              chart_type: line
+              dimensions:
+                - name: read
+                - name: write
+            - name: hyperv.vm_storage_device_errors
+              description: VM storage device errors
+              unit: "errors/s"
+              chart_type: line
+              dimensions:
+                - name: errors
+        - name: Virtual Machine Network Interface
+          description: "These metrics refer to the Virtual Machine Network Interface."
+          labels:
+            - name: vm_net_interface
+              description: The name of the Network Interface.
+          metrics:
+            - name: hyperv.vm_net_interface_traffic
+              description: VM interface traffic
+              unit: "kilobits/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vm_net_interface_ipsec_traffic
+              description: VM interface traffic
+              unit: "kilobits/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vm_net_interface_packets
+              description: VM interface packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vm_net_interface_directed_packets
+              description: VM interface directed packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vm_net_interface_broadcast_packets
+              description: VM interface broadcast
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vm_net_interface_multicast_packets
+              description: VM interface multicast
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vm_net_interface_packets_dropped
+              description: VM interface packets dropped
+              unit: "drops/s"
+              chart_type: line
+              dimensions:
+                - name: incoming
+                - name: outgoing
+        - name: Virtual Switch
+          description: "These metrics refer to the Virtual Switch."
+          labels:
+            - name: vswitch
+              description: The name of the Virtual Switch.
+          metrics:
+            - name: hyperv.vswitch_traffic
+              description: Virtual switch traffic
+              unit: "kilobits/s"
+              chart_type: area
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vswitch_packets
+              description: Virtual switch packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vswitch_directed_packets
+              description: Virtual switch directed packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vswitch_broadcast_packets
+              description: Virtual switch broadcast packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vswitch_multicast_packets
+              description: Virtual switch multicast packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: received
+                - name: sent
+            - name: hyperv.vswitch_dropped_packets
+              description: Virtual switch dropped packets
+              unit: "drops/s"
+              chart_type: line
+              dimensions:
+                - name: incoming
+                - name: outgoing
+            - name: hyperv.vswitch_extensions_dropped_packets
+              description: Virtual switch extensions dropped packets
+              unit: "drops/s"
+              chart_type: line
+              dimensions:
+                - name: incoming
+                - name: outgoing
+            - name: hyperv.vswitch_packets_flooded
+              description: Virtual switch flooded packets
+              unit: "packets/s"
+              chart_type: line
+              dimensions:
+                - name: flooded
+            - name: hyperv.vswitch_learned_mac_addresses
+              description: Virtual switch learned MAC addresses
+              unit: "mac addresses/s"
+              chart_type: line
+              dimensions:
+                - name: learned
+            - name: hyperv.vswitch_purged_mac_addresses
+              description: Virtual switch purged MAC addresses
+              unit: "mac addresses/s"
+              chart_type: line
+              dimensions:
+                - name: purged
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibNetFramework
+      monitored_instance:
+        name: NET Framework
+        link: "https://dotnet.microsoft.com/en-us/learn/dotnet/what-is-dotnet-framework"
+        categories:
+          - data-collection.applications
+        icon_filename: "dotnet.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - netframework
+        - dotnet
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors application built with .NET
+        method_description: |
+          It queries different NET Framework objects per process from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibNetFramework]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Processes running
+          description: "These metrics refer to NET applications."
+          labels:
+            - name: process
+              description: The process name.
+          metrics:
+            - name: netframework.clrexception_thrown
+              description: Thrown exceptions
+              unit: exceptions/s
+              chart_type: line
+              dimensions:
+                - name: exceptions
+            - name: netframework.clrexception_filters
+              description: Thrown exceptions filters
+              unit: filters/s
+              chart_type: line
+              dimensions:
+                - name: filters
+            - name: netframework.clrexception_finallys
+              description: Executed finally blocks
+              unit: finallys/s
+              chart_type: line
+              dimensions:
+                - name: finallys
+            - name: netframework.clrexception_throw_to_catch_depth
+              description: Traversed stack frames
+              unit: stack_frames/s
+              chart_type: line
+              dimensions:
+                - name: traversed
+            - name: netframework.clrinterop_com_callable_wrappers
+              description: COM callable wrappers (CCW)
+              unit: ccw/s
+              chart_type: line
+              dimensions:
+                - name: com_callable_wrappers
+            - name: netframework.clrinterop_interop_marshallings
+              description: Arguments and return values marshallings
+              unit: marshallings/s
+              chart_type: line
+              dimensions:
+                - name: marshallings
+            - name: netframework.clrinterop_interop_stubs_created
+              description: Created stubs
+              unit: stubs/s
+              chart_type: line
+              dimensions:
+                - name: created
+            - name: netframework.clrjit_methods
+              description: JIT-compiled methods
+              unit: methods/s
+              chart_type: line
+              dimensions:
+                - name: jit-compiled
+            - name: netframework.clrjit_time
+              description: Time spent in JIT compilation
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: time
+            - name: netframework.clrjit_standard_failures
+              description: JIT compiler failures
+              unit: failures/s
+              chart_type: line
+              dimensions:
+                - name: failures
+            - name: netframework.clrjit_il_bytes
+              description: Compiled Microsoft intermediate language (MSIL) bytes
+              unit: bytes/s
+              chart_type: line
+              dimensions:
+                - name: compiled_msil
+            - name: netframework.clrloading_loader_heap_size
+              description: Memory committed by class loader
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: committed
+            - name: netframework.clrloading_appdomains_loaded
+              description: Loaded application domains
+              unit: domain/s
+              chart_type: line
+              dimensions:
+                - name: loaded
+            - name: netframework.clrloading_appdomains_unloaded
+              description: Unloaded application domains
+              unit: domain/s
+              chart_type: line
+              dimensions:
+                - name: unloaded
+            - name: netframework.clrloading_assemblies_loaded
+              description: Loaded assemblies
+              unit: assemblies/s
+              chart_type: line
+              dimensions:
+                - name: loaded
+            - name: netframework.clrloading_classes_loaded
+              description: Loaded classes in all assemblies
+              unit: classes/s
+              chart_type: line
+              dimensions:
+                - name: loaded
+            - name: netframework.clrloading_class_load_failures
+              description: Class load failures
+              unit: failures/s
+              chart_type: line
+              dimensions:
+                - name: class_load
+            - name: netframework.clrremoting_channels
+              description: Registered channels
+              unit: channels/s
+              chart_type: line
+              dimensions:
+                - name: registered
+            - name: netframework.clrremoting_context_bound_classes_loaded
+              description: Loaded context-bound classes
+              unit: classes
+              chart_type: line
+              dimensions:
+                - name: loaded
+            - name: netframework.clrremoting_context_bound_objects
+              description: Allocated context-bound objects
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: allocated
+            - name: netframework.clrremoting_context_proxies
+              description: Remoting proxy objects
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: objects
+            - name: netframework.clrremoting_remote_calls
+              description: Remote Procedure Calls (RPC) invoked
+              unit: calls/s
+              chart_type: line
+              dimensions:
+                - name: calls
+            - name: netframework.clrsecurity_link_time_checks
+              description: Link-time code access security checks
+              unit: checks/s
+              chart_type: line
+              dimensions:
+                - name: linktime
+            - name: netframework.clrsecurity_checks_time
+              description: Time spent performing runtime code access security checks
+              unit: percentage
+              chart_type: line
+              dimensions:
+                - name: time
+            - name: netframework.clrsecurity_stack_walk_depth
+              description: Depth of the stack
+              unit: depth
+              chart_type: line
+              dimensions:
+                - name: stack
+            - name: netframework.clrsecurity_runtime_checks
+              description: Runtime code access security checks performed
+              unit: checks/s
+              chart_type: line
+              dimensions:
+                - name: runtime
+            - name: netframework.clrlocksandthreads_queue_length
+              description: Threads waited to acquire a managed lock
+              unit: threads/s
+              chart_type: line
+              dimensions:
+                - name: threads
+            - name: netframework.clrlocksandthreads_current_logical_threads
+              description: Logical threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: logical
+            - name: netframework.clrlocksandthreads_current_physical_threads
+              description: Physical threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: physical
+            - name: netframework.clrlocksandthreads_recognized_threads
+              description: Threads recognized by the runtime
+              unit: threads/s
+              chart_type: line
+              dimensions:
+                - name: threads
+            - name: netframework.clrlocksandthreads_contentions
+              description: Fails to acquire a managed lock
+              unit: contentions/s
+              chart_type: line
+              dimensions:
+                - name: contentions
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibAD
+      monitored_instance:
+        name: Active Directory
+        link: "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview"
+        categories:
+          - data-collection.applications
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - active directory
+        - ad
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Active Directory directory operations, replication, LDAP activity, binds, queueing, database, cleanup, security descriptor propagation, and SAM metrics.
+        method_description: |
+          It queries DirectoryServices object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibAD]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 10
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Active Directory
+          description: "These metrics refer to Active Directory."
+          labels: []
+          metrics:
+            - name: ad.address_book_ambiguous_name_resolution
+              description: Address book ambiguous name resolution
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: ambiguous_name_resolution
+            - name: ad.address_book_browse
+              description: Address book browse operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: browse
+            - name: ad.address_book_find
+              description: Address book matches
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: find
+            - name: ad.address_book_property_read
+              description: Address book property reads
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: property_read
+            - name: ad.address_book_search
+              description: Address book searches
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: search
+            - name: ad.address_book_proxy_search
+              description: Address book proxy searches
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: proxy_search
+            - name: ad.address_book_client_sessions
+              description: Address book client sessions
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: sessions
+            - name: ad.approximate_highest_dnt
+              description: Approximate highest distinguished name tag
+              unit: dnt
+              chart_type: line
+              dimensions:
+                - name: dnt
+            - name: ad.directory_operations
+              description: AD directory operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: read
+                - name: write
+                - name: search
+            - name: ad.searches_base
+              description: Directory base searches
+              unit: searches/s
+              chart_type: line
+              dimensions:
+                - name: base
+            - name: ad.searches_subtree
+              description: Directory subtree searches
+              unit: searches/s
+              chart_type: line
+              dimensions:
+                - name: subtree
+            - name: ad.searches_one_level
+              description: Directory one-level searches
+              unit: searches/s
+              chart_type: line
+              dimensions:
+                - name: one_level
+            - name: ad.name_cache_lookups
+              description: Name cache lookups
+              unit: lookups/s
+              chart_type: line
+              dimensions:
+                - name: lookups
+            - name: ad.name_cache_hits
+              description: Name cache hits
+              unit: hits/s
+              chart_type: line
+              dimensions:
+                - name: hits
+            - name: ad.ldap_searches
+              description: LDAP client search operations
+              unit: searches/s
+              chart_type: line
+              dimensions:
+                - name: searches
+            - name: ad.dra_replication_properties_updated
+              description: DRA replication properties updated
+              unit: properties/s
+              chart_type: line
+              dimensions:
+                - name: inbound
+            - name: ad.dra_replication_properties_filtered
+              description: DRA replication properties filtered
+              unit: properties/s
+              chart_type: line
+              dimensions:
+                - name: inbound
+            - name: ad.dra_replication_intersite_compressed_traffic
+              description: DRA replication compressed traffic between sites
+              unit: bytes/s
+              chart_type: area
+              dimensions:
+                - name: inbound
+                - name: outbound
+            - name: ad.dra_replication_intrasite_uncompressed_traffic
+              description: DRA replication uncompressed traffic within site
+              unit: bytes/s
+              chart_type: area
+              dimensions:
+                - name: inbound
+                - name: outbound
+            - name: ad.replication_highest_usn_committed
+              description: Highest replication committed update sequence number
+              unit: usn/s
+              chart_type: line
+              dimensions:
+                - name: committed
+            - name: ad.replication_highest_usn_issued
+              description: Highest replication issued update sequence number
+              unit: usn/s
+              chart_type: line
+              dimensions:
+                - name: issued
+            - name: ad.replication_inbound_sync_objects_remaining
+              description: Replication inbound sync objects remaining
+              unit: objects
+              chart_type: line
+              dimensions:
+                - name: remaining
+            - name: ad.replication_inbound_link_value_updates_remaining
+              description: Replication inbound link value updates remaining
+              unit: updates
+              chart_type: line
+              dimensions:
+                - name: remaining
+            - name: ad.replication_inbound_objects_updated
+              description: Replication inbound objects updated
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: updated
+            - name: ad.replication_inbound_objects_filtered
+              description: Replication inbound objects filtered
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: filtered
+            - name: ad.dra_replication_pending_syncs
+              description: DRA replication pending syncs
+              unit: syncs
+              chart_type: line
+              dimensions:
+                - name: pending
+            - name: ad.dra_replication_sync_requests
+              description: DRA replication sync requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: request
+            - name: ad.replication_pending_operations
+              description: Replication pending operations
+              unit: operations
+              chart_type: line
+              dimensions:
+                - name: pending
+            - name: ad.replication_sync_requests_success
+              description: Replication sync requests successful
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: ad.replication_sync_requests_schema_mismatch_failure
+              description: Replication sync requests failed due to schema mismatch
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: failure
+            - name: ad.name_translations_client
+              description: Client name translations
+              unit: translations/s
+              chart_type: line
+              dimensions:
+                - name: client
+            - name: ad.name_translations_server
+              description: Server name translations
+              unit: translations/s
+              chart_type: line
+              dimensions:
+                - name: server
+            - name: ad.change_monitors_registered
+              description: Registered change monitors
+              unit: monitors
+              chart_type: line
+              dimensions:
+                - name: registered
+            - name: ad.change_monitor_updates_pending
+              description: Pending change monitor updates
+              unit: updates
+              chart_type: line
+              dimensions:
+                - name: pending
+            - name: ad.directory_search_suboperations
+              description: Directory search suboperations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: suboperations
+            - name: ad.security_descriptor_propagation_events
+              description: Security descriptor propagation events
+              unit: events/s
+              chart_type: line
+              dimensions:
+                - name: events
+            - name: ad.security_descriptor_propagation_events_queued
+              description: Security descriptor propagation events queued
+              unit: events
+              chart_type: line
+              dimensions:
+                - name: queued
+            - name: ad.security_descriptor_propagation_access_wait
+              description: Security descriptor propagation access wait
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: wait
+            - name: ad.security_descriptor_propagation_items_queued
+              description: Security descriptor propagation items queued
+              unit: items
+              chart_type: line
+              dimensions:
+                - name: queued
+            - name: ad.ds_threads
+              description: Directory Service threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: thread
+            - name: ad.ldap_last_bind_time
+              description: LDAP last successful bind time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: last_bind
+            - name: ad.binds_digest
+              description: Digest binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: digest
+            - name: ad.binds_ds_client
+              description: DS client binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: ds_client
+            - name: ad.binds_ds_server
+              description: DS server binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: ds_server
+            - name: ad.binds_external
+              description: External binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: external
+            - name: ad.binds_fast
+              description: Fast binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: fast
+            - name: ad.binds_negotiate
+              description: Negotiated binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: negotiate
+            - name: ad.binds_ntlm
+              description: NTLM binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: ntlm
+            - name: ad.binds_simple
+              description: Simple binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: simple
+            - name: ad.binds_ldap
+              description: LDAP successful binds
+              unit: binds/s
+              chart_type: line
+              dimensions:
+                - name: ldap
+            - name: ad.ldap_closed_connections
+              description: LDAP closed connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: closed
+            - name: ad.ldap_opened_connections_ldap
+              description: LDAP opened connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: ldap
+            - name: ad.ldap_opened_connections_ldaps
+              description: LDAPS opened connections
+              unit: connections/s
+              chart_type: line
+              dimensions:
+                - name: ldaps
+            - name: ad.ldap_active_threads
+              description: LDAP active threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: ad.ldap_udp_operations
+              description: LDAP UDP operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: udp
+            - name: ad.ldap_writes
+              description: LDAP writes
+              unit: writes/s
+              chart_type: line
+              dimensions:
+                - name: writes
+            - name: ad.ldap_client_sessions
+              description: LDAP client sessions
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: sessions
+            - name: ad.atq_outstanding_requests
+              description: Outstanding requests
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: outstanding
+            - name: ad.atq_estimated_delay
+              description: Estimated queue delay
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: delay
+            - name: ad.atq_average_request_latency
+              description: Average request processing time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: time
+            - name: ad.atq_current_threads_ldap
+              description: Current ATQ LDAP threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: ldap
+            - name: ad.atq_current_threads_other
+              description: Current ATQ other threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: other
+            - name: ad.atq_current_threads_total
+              description: Current ATQ total threads
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: total
+            - name: ad.database_operations
+              description: AD database operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: add
+                - name: delete
+                - name: modify
+                - name: recycle
+            - name: ad.directory_reads
+              description: Directory reads
+              unit: reads/s
+              chart_type: line
+              dimensions:
+                - name: read
+            - name: ad.directory_searches
+              description: Directory searches
+              unit: searches/s
+              chart_type: line
+              dimensions:
+                - name: search
+            - name: ad.directory_writes
+              description: Directory writes
+              unit: writes/s
+              chart_type: line
+              dimensions:
+                - name: write
+            - name: ad.replication_inbound_object_updates_remaining
+              description: Replication inbound object updates remaining
+              unit: updates
+              chart_type: line
+              dimensions:
+                - name: remaining
+            - name: ad.replication_inbound_values_dns_only
+              description: DRA replication inbound values DNs only
+              unit: values/s
+              chart_type: line
+              dimensions:
+                - name: dns_only
+            - name: ad.replication_inbound_values_total
+              description: DRA replication inbound values total
+              unit: values/s
+              chart_type: line
+              dimensions:
+                - name: total
+            - name: ad.replication_outbound_objects_filtered
+              description: Replication outbound objects filtered
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: filtered
+            - name: ad.replication_outbound_objects
+              description: Replication outbound objects
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: objects
+            - name: ad.replication_outbound_properties
+              description: Replication outbound properties
+              unit: properties/s
+              chart_type: line
+              dimensions:
+                - name: properties
+            - name: ad.replication_outbound_values_dns_only
+              description: DRA replication outbound values DNs only
+              unit: values/s
+              chart_type: line
+              dimensions:
+                - name: dns_only
+            - name: ad.replication_outbound_values_total
+              description: DRA replication outbound values total
+              unit: values/s
+              chart_type: line
+              dimensions:
+                - name: total
+            - name: ad.replication_threads_getting_nc_changes
+              description: DRA threads getting NC changes
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: threads
+            - name: ad.replication_threads_getting_nc_changes_holding_semaphore
+              description: DRA threads getting NC changes holding semaphore
+              unit: threads
+              chart_type: line
+              dimensions:
+                - name: threads
+            - name: ad.transitive_operations
+              description: Transitive operations
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: operations
+            - name: ad.transitive_suboperations
+              description: Transitive suboperations
+              unit: suboperations/s
+              chart_type: line
+              dimensions:
+                - name: suboperations
+            - name: ad.replication_inbound_bytes_total
+              description: DRA replication inbound bytes total
+              unit: bytes/s
+              chart_type: line
+              dimensions:
+                - name: inbound
+            - name: ad.replication_outbound_bytes_total
+              description: DRA replication outbound bytes total
+              unit: bytes/s
+              chart_type: line
+              dimensions:
+                - name: outbound
+            - name: ad.link_values_cleaned
+              description: Link values cleaned
+              unit: values/s
+              chart_type: line
+              dimensions:
+                - name: cleaned
+            - name: ad.phantom_objects_cleaned
+              description: Phantom objects cleaned
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: cleaned
+            - name: ad.phantom_objects_visited
+              description: Phantom objects visited
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: visited
+            - name: ad.tombstoned_objects_collected
+              description: Tombstoned objects collected
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: collected
+            - name: ad.tombstoned_objects_visited
+              description: Tombstoned objects visited
+              unit: objects/s
+              chart_type: line
+              dimensions:
+                - name: visited
+            - name: ad.sam_group_membership_evaluations
+              description: SAM group membership evaluations
+              unit: evaluations/s
+              chart_type: line
+              dimensions:
+                - name: global
+                - name: domain_local
+                - name: universal
+            - name: ad.sam_group_membership_global_catalog_evaluations
+              description: SAM group membership global catalog evaluations
+              unit: evaluations/s
+              chart_type: line
+              dimensions:
+                - name: global_catalog
+            - name: ad.sam_group_membership_evaluations_nontransitive
+              description: SAM non-transitive membership evaluations
+              unit: evaluations/s
+              chart_type: line
+              dimensions:
+                - name: nontransitive
+            - name: ad.sam_group_membership_evaluations_transitive
+              description: SAM transitive membership evaluations
+              unit: evaluations/s
+              chart_type: line
+              dimensions:
+                - name: transitive
+            - name: ad.sam_group_evaluation_latency
+              description: SAM group evaluation latency
+              unit: latency
+              chart_type: line
+              dimensions:
+                - name: account_group
+                - name: resource_group
+            - name: ad.sam_computer_creation_requests
+              description: SAM computer creation requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: request
+            - name: ad.sam_computer_creation_successful_requests
+              description: SAM successful computer creation requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: ad.sam_user_creation_requests
+              description: SAM user creation requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: request
+            - name: ad.sam_user_creation_successful_requests
+              description: SAM successful user creation requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: ad.sam_query_display_requests
+              description: SAM query display requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: query
+            - name: ad.sam_enumerations
+              description: SAM enumerations
+              unit: enumerations/s
+              chart_type: line
+              dimensions:
+                - name: enumeration
+            - name: ad.sam_membership_changes
+              description: SAM membership changes
+              unit: changes/s
+              chart_type: line
+              dimensions:
+                - name: change
+            - name: ad.sam_password_changes
+              description: SAM password changes
+              unit: changes/s
+              chart_type: line
+              dimensions:
+                - name: change
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibADCS
+      monitored_instance:
+        name: Active Directory Certificate Service
+        link: "https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/"
+        categories:
+          - data-collection.applications
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - active directory
+        - adcs
+        - ad
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Active Directory Certificate Services statistics.
+        method_description: |
+          It queries 'Certification Authority' object per certificate from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibADCS]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 10
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Certificate Service Certificate
+          description: "These metrics refer to the Certificate instances defined on host."
+          labels:
+            - name: cert
+              description: The certificate name.
+          metrics:
+            - name: adcs.cert_requests
+              description: Certificate requests processed
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: adcs.cert_request_processing_time
+              description: Certificate last request processing time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: processing_times
+            - name: adcs.cert_retrievals
+              description: Total of certificate retrievals
+              unit: retrievals/s
+              chart_type: line
+              dimensions:
+                - name: retrievals
+            - name: adcs.cert_failed_requests
+              description: Certificate failed requests processed
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: failed
+            - name: adcs.cert_issued_requests
+              description: Certificate issued requests processed
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: issued
+            - name: adcs.cert_pending_requests
+              description: Certificate pending requests processed
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: pending
+            - name: adcs.cert_challenge_responses
+              description: Certificate challenge responses
+              unit: responses/s
+              chart_type: line
+              dimensions:
+                - name: challenge
+            - name: adcs.cert_retrieval_processing_time
+              description: Certificate last retrieval processing time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: processing_time
+            - name: adcs.cert_request_cryptographic_signing_time
+              description: Certificate last signing operation request time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: singing_time
+            - name: adcs.cert_request_policy_module_processing
+              description: Certificate last policy module processing request time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: processing_time
+            - name: adcs.cert_request_policy_module_processing
+              description: Certificate last policy module processing request time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: processing_time
+            - name: adcs.cert_challenge_response_processing_time
+              description: Certificate last challenge response time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: processing_time
+            - name: adcs.cert_signed_certificate_timestamp_lists
+              description: Certificate Signed Certificate Timestamp Lists processed
+              unit: lists/s
+              chart_type: line
+              dimensions:
+                - name: processing_time
+            - name: adcs.cert_signed_certificate_timestamp_lists
+              description: Certificate Signed Certificate Timestamp Lists processed
+              unit: lists/s
+              chart_type: line
+              dimensions:
+                - name: lists
+            - name: adcs.cert_signed_certificate_timestamp_list_processing_time
+              description: Certificate last Signed Certificate Timestamp List process time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: processing_time
+            - name: adcs.cert_retrieval_processing_time
+              description: Certificate last retrieval processing time
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: processing_time
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibADFS
+      monitored_instance:
+        name: Active Directory Federation Service
+        link: "https://learn.microsoft.com/en-us/windows-server/identity/ad-fs/ad-fs-overview"
+        categories:
+          - data-collection.applications
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - active directory
+        - adfs
+        - ad
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Active Directory Federation Services statistics.
+        method_description: |
+          It queries 'AD FS' object from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibADFS]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 10
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Federation Service
+          description: "These metrics refer to the Federated Identity and Access Management on host."
+          labels: []
+          metrics:
+            - name: adfs.ad_login_connection_failures
+              description: Connection failures
+              unit: failures/s
+              chart_type: line
+              dimensions:
+                - name: connection
+            - name: adfs.certificate_authentications
+              description: User Certificate authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: authentications
+            - name: adfs.db_artifact_failures
+              description: Connection failures to the artifact database
+              unit: failures/s
+              chart_type: line
+              dimensions:
+                - name: connection
+            - name: adfs.db_artifact_query_time_seconds
+              description: Time taken for an artifact database query
+              unit: seconds/s
+              chart_type: line
+              dimensions:
+                - name: query_time
+            - name: adfs.db_config_failures
+              description: Connection failures to the configuration database
+              unit: failures/s
+              chart_type: line
+              dimensions:
+                - name: connection
+            - name: adfs.db_config_query_time_seconds
+              description: Time taken for a configuration database query
+              unit: seconds/s
+              chart_type: line
+              dimensions:
+                - name: query_time
+            - name: adfs.device_authentications
+              description: Device authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: authentications
+            - name: adfs.extranet_account_lockouts
+              description: Extranet account lockouts
+              unit: lockouts/s
+              chart_type: line
+              dimensions:
+                - name: lockouts
+            - name: adfs.external_authentications
+              description: Authentications from external MFA providers
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.federated_authentications
+              description: Authentications from Federated Sources
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: authentications
+            - name: adfs.federation_metadata_requests
+              description: Federation Metadata requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: adfs.oauth_authorization_requests
+              description: Incoming requests to the OAuth Authorization endpoint
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: adfs.oauth_client_authentications
+              description: OAuth client credentials requests
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_client_credentials_requests
+              description: OAuth client credentials requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_client_privkey_jwt_authentications
+              description: OAuth client private key JWT authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_client_secret_basic_authentications
+              description: OAuth client secret basic authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_client_secret_basic_authentications
+              description: OAuth client secret basic authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_client_secret_post_authentications
+              description: OAuth client secret post authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_client_windows_authentications
+              description: OAuth client windows integrated authentications
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_logon_certificate_requests
+              description: OAuth logon certificate requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_password_grant_requests
+              description: OAuth password grant requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.oauth_token_requests_success
+              description: Successful RP token requests over OAuth protocol
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: adfs.passive_requests
+              description: Passive requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: passive
+            - name: adfs.passport_authentications
+              description: Microsoft Passport SSO authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: passport
+            - name: adfs.password_change_requests
+              description: Password change requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.samlp_token_requests_success
+              description: Successful RP token requests over SAML-P protocol
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: adfs.sso_authentications
+              description: SSO authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.token_requests
+              description: Token access requests
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: adfs.userpassword_authentications
+              description: AD U/P authentications
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: success
+                - name: failure
+            - name: adfs.windows_integrated_authentications
+              description: Windows integrated authentications using Kerberos or NTLM
+              unit: authentications/s
+              chart_type: line
+              dimensions:
+                - name: authentications
+            - name: adfs.wsfed_token_requests_success
+              description: Successful RP token requests over WS-Fed protocol
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: adfs.wstrust_token_requests_success
+              description: Successful RP token requests over WS-Trust protocol
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: success
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibServices
+      monitored_instance:
+        name: Windows Services
+        link: "https://learn.microsoft.com/en-us/dotnet/framework/windows-services/"
+        categories:
+          - data-collection.operating-systems
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - services
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Windows Services Status and States.
+        method_description: |
+          It queries Service Management to get the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibServices]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 30
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Windows Service
+          description: "These metrics refer to Windows Services."
+          labels:
+            - name: service
+              description: The service name
+          metrics:
+            - name: windows.service_state
+              description: Service state
+              unit: state
+              chart_type: line
+              dimensions:
+                - name: running
+                - name: stopped
+                - name: start_pending
+                - name: stop_pending
+                - name: continue_pending
+                - name: pause_pending
+                - name: paused
+                - name: unknown
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibExchange
+      monitored_instance:
+        name: MS Exchange
+        link: "https://www.microsoft.com/en-us/microsoft-365/exchange/email"
+        categories:
+          - data-collection.applications
+        icon_filename: "exchange.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - microsoft
+        - exchange
+        - mail
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors Microsoft Exchange.
+        method_description: |
+          It queries different Exchange objects from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibExchange]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 10
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: Windows Exchange
+          description: "These metrics refer to Windows Exchange."
+          labels: []
+          metrics:
+            - name: exchange.transport_queues_active_mail_box_delivery
+              description: Active Mailbox Delivery Queue length.
+              unit: messages
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: exchange.transport_queues_external_active_remote_delivery
+              description: External Active Remote Delivery Queue length.
+              unit: messages
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: exchange.transport_queues_internal_active_remote_delivery
+              description: Internal Active Remote Delivery Queue length.
+              unit: messages
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: exchange.transport_queues_unreachable
+              description: Unreachable Queue length.
+              unit: messages
+              chart_type: line
+              dimensions:
+                - name: unreachable
+            - name: exchange.transport_queues_poison
+              description: Poison Queue Length.
+              unit: messages
+              chart_type: line
+              dimensions:
+                - name: unreachable
+            - name: exchange.activesync_ping_cmds_pending
+              description: Ping commands pending in queue.
+              unit: commands
+              chart_type: line
+              dimensions:
+                - name: pending
+            - name: exchange.activesync_requests
+              description: HTTP requests received from ASP.NET.
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: received
+            - name: exchange.activesync_sync_cmds
+              description: Sync commands processed.
+              unit: commands/s
+              chart_type: line
+              dimensions:
+                - name: processed
+            - name: exchange.rpc_active_user_count
+              description: Active unique users in the last 2 minutes.
+              unit: users
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: exchange.rpc_avg_latency
+              description: Average latency.
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: latency
+            - name: exchange.rpc_connection_count
+              description: Client connections.
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: connections
+            - name: exchange.rpc_requests
+              description: Clients requests currently being processed.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: processed
+            - name: exchange.rpc_active_user
+              description: Active unique users in the last 2 minutes.
+              unit: users
+              chart_type: line
+              dimensions:
+                - name: users
+            - name: exchange.rpc_connection
+              description: Client connections.
+              unit: connections
+              chart_type: line
+              dimensions:
+                - name: connections
+            - name: exchange.rpc_operations
+              description: RPC operations.
+              unit: operations/s
+              chart_type: line
+              dimensions:
+                - name: operations
+            - name: exchange.rpc_user_count
+              description: RPC users.
+              unit: users
+              chart_type: line
+              dimensions:
+                - name: users
+            - name: exchange.owa_current_unique_users
+              description: Unique users currently logged on to Outlook Web App.
+              unit: users
+              chart_type: line
+              dimensions:
+                - name: logged-in
+            - name: exchange.owa_requests_total
+              description: Requests handled by Outlook Web App.
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: handled
+            - name: exchange.workload_active_tasks
+              description: Workload active tasks.
+              unit: tasks
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: exchange.workload_completed_tasks
+              description: Workload completed tasks.
+              unit: tasks/s
+              chart_type: line
+              dimensions:
+                - name: completed
+            - name: exchange.workload_queued_tasks
+              description: Workload queued tasks.
+              unit: tasks/s
+              chart_type: line
+              dimensions:
+                - name: queued
+            - name: exchange.workload_yielded_tasks
+              description: Workload yielded tasks.
+              unit: tasks/s
+              chart_type: line
+              dimensions:
+                - name: yielded
+            - name: exchange.workload_activity_status
+              description: Workload activity status
+              unit: status
+              chart_type: line
+              dimensions:
+                - name: active
+                - name: paused
+            - name: exchange.http_proxy_avg_auth_latency
+              description: Average time spent authenticating CAS requests.
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: latency
+            - name: exchange.http_proxy_avg_cas_processing_latency_sec
+              description: Average latency (sec) of CAS processing time.
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: latency
+            - name: exchange.http_proxy_mailbox_proxy_failure_rate
+              description: Percentage of failures between this CAS and MBX servers.
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: failures
+            - name: exchange.http_proxy_mailbox_server_locator_avg_latency_sec
+              description: Average latency of MailboxServerLocator web service calls.
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: latency
+            - name: exchange.http_proxy_outstanding_proxy_requests
+              description: Concurrent outstanding proxy requests.
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: exchange.http_proxy_requests
+              description: Number of proxy requests processed each second.
+              unit: seconds
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: exchange.autodiscover_requests
+              description: Autodiscover service requests processed
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: processed
+            - name: exchange.avail_service_requests
+              description: Requests serviced
+              unit: requests/s
+              chart_type: line
+              dimensions:
+                - name: serviced
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibNUMA
+      monitored_instance:
+        name: NUMA Architecture
+        link: "https://learn.microsoft.com/en-us/windows/win32/procthread/numa-support"
+        categories:
+          - data-collection.operating-systems
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - NUMA
+        - processor
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors NUMA Architecture on Windows.
+        method_description: |
+          It queries NUMA Node Memory from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows:PerflibNUMA]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: update every
+              description: Data collection frequency.
+              default_value: 1
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: NUMA
+          description: "These metrics refer to memory utilization on NUMA systems."
+          labels:
+            - name: node
+              description: The identifier of the CPU node.
+          metrics:
+            - name: mem.numa_node_mem_usage
+              description: NUMA Node Memory Usage
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: free
+                - name: standby
+  - meta:
+      plugin_name: windows.plugin
+      module_name: PerflibASP
+      monitored_instance:
+        name: ASP.NET
+        link: "https://dotnet.microsoft.com/en-us/apps/aspnet"
+        categories:
+          - data-collection.web-servers-and-proxies
+        icon_filename: "windows.svg"
+      related_resources:
+        integrations:
+          list: []
+      info_provided_to_referring_integrations:
+        description: ""
+      keywords:
+        - windows
+        - ASP
+        - webservice
+    overview:
+      data_collection:
+        metrics_description: |
+          This collector monitors ASP.NET applications.
+        method_description: |
+          It queries for the 'ASP.NET' and 'ASP.NET Applications' objects from Perflib in order to gather the metrics.
+      supported_platforms:
+        include: ["windows"]
+        exclude: []
+      multi_instance: false
+      additional_permissions:
+        description: ""
+      default_behavior:
+        auto_detection:
+          description: |
+            The collector automatically detects all of the metrics, no further configuration is required.
+        limits:
+          description: ""
+        performance_impact:
+          description: ""
+    setup:
+      prerequisites:
+        list: []
+      configuration:
+        file:
+          name: "netdata.conf"
+          section_name: "[plugin:windows]"
+          description: "The Netdata main configuration file"
+        options:
+          description: ""
+          folding:
+            title: "Config option"
+            enabled: false
+          list:
+            - name: PerflibASP
+              description: An option to enable or disable the data collection.
+              default_value: yes
+              required: false
+        examples:
+          folding:
+            enabled: true
+            title: ""
+          list: []
+    troubleshooting:
+      problems:
+        list: []
+    alerts: []
+    metrics:
+      folding:
+        title: Metrics
+        enabled: false
+      description: ""
+      availability: []
+      scopes:
+        - name: ASP.NET Global Data
+          description: "These metrics refer to ASP.NET global metrics."
+          labels: []
+          metrics:
+            - name: aspnet.application_restarts
+              description: Number of times the application has been restarted.
+              unit: restarts
+              chart_type: line
+              dimensions:
+                - name: restarts
+            - name: aspnet.worker_process_restarts
+              description: Number of times a worker process has restarted on the machine.
+              unit: restarts
+              chart_type: line
+              dimensions:
+                - name: restarts
+        - name: ASP.NET Applications
+          description: "ASP.NET application performance counters"
+          labels:
+            - name: aspnet_app
+              description: The application name.
+          metrics:
+            - name: aspnet.anonymous_request
+              description: Number of requests utilizing anonymous authentication.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: requests
+            - name: aspnet.compilation_totals
+              description: Number of source files dynamically compiled.
+              unit: compilations
+              chart_type: line
+              dimensions:
+                - name: compilations
+            - name: aspnet.errors_during_preprocessing
+              description: Errors During Preprocessing.
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: preprocessing
+            - name: aspnet.errors_during_compilation
+              description: Errors During Compilation.
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: compilation
+            - name: aspnet.errors_during_execution
+              description: Errors During Execution.
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: execution
+            - name: aspnet.errors_during_unhandled_execution
+              description: Errors Unhandled During Execution.
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: unhandled
+            - name: aspnet.requests_byte_total
+              description: Size of responses and request.
+              unit: bytes
+              chart_type: line
+              dimensions:
+                - name: in
+                - name: out
+            - name: aspnet.requests_executing
+              description: The number of requests currently executing.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: executing
+            - name: aspnet.requests_failed
+              description: Number of failed requests.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: executing
+            - name: aspnet.requests_not_found
+              description: Requests for resources that were not found.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: not found
+            - name: aspnet.requests_not_authorized
+              description: Requests that were not authorized.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: not_authorized
+            - name: aspnet.requests_in_application_queue
+              description: Requests in the application queue.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: queue
+            - name: aspnet.requests_timeout
+              description: Requests that timed out.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: timeout
+            - name: aspnet.requests_succeeded
+              description: Requests that executed successfully.
+              unit: requests
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: aspnet.sessions_active
+              description: Sessions currently active.
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: active
+            - name: aspnet.sessions_abandoned
+              description: Sessions explicitly abandoned.
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: abandoned
+            - name: aspnet.sessions_abandoned
+              description: Sessions explicitly abandoned.
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: abandoned
+            - name: aspnet.sessions_timed_out
+              description: Sessions timed out.
+              unit: sessions
+              chart_type: line
+              dimensions:
+                - name: timed out
+            - name: aspnet.transactions_aborted
+              description: Transactions Aborted.
+              unit: transactions
+              chart_type: line
+              dimensions:
+                - name: aborted
+            - name: aspnet.transactions_committed
+              description: Transactions Committed.
+              unit: transactions
+              chart_type: line
+              dimensions:
+                - name: committed
+            - name: aspnet.transactions_pending
+              description: Transactions Pending.
+              unit: transactions
+              chart_type: line
+              dimensions:
+                - name: pending
+            - name: aspnet.events_raised_per_sec
+              description: Instrumentation events.
+              unit: events
+              chart_type: line
+              dimensions:
+                - name: raised
+            - name: aspnet.error_events_raised_per_sec
+              description: Runtime error events raised.
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: events
+            - name: aspnet.events_audit_success
+              description: Audit successes in the application.
+              unit: errors
+              chart_type: line
+              dimensions:
+                - name: events
+            - name: aspnet.events_audit_failure
+              description: Audit Failure Events Raised
+              unit: failures
+              chart_type: line
+              dimensions:
+                - name: audit
+            - name: aspnet.membership_auth_success
+              description: Membership Authentication Success.
+              unit: auth
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: aspnet.form_authentication_success
+              description: Membership Authentication Failure.
+              unit: auth
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: aspnet.form_authentication_success
+              description: Forms Authentication Success.
+              unit: auth
+              chart_type: line
+              dimensions:
+                - name: success
+            - name: aspnet.form_authentication_failure
+              description: Forms Authentication Failure.
+              unit: auth
+              chart_type: line
+              dimensions:
+                - name: failure
